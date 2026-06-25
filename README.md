@@ -1,11 +1,10 @@
-<img width="2048" height="1152" alt="polypost介绍" src="https://github.com/user-attachments/assets/36b38617-184b-4e80-8447-d2d465f8e9d1" />
-
 # Polypost
 
 > **One-click multilingual blog publisher for Strapi.**
 > Paste an article, auto-translate to 11 languages, and publish — in minutes.
 
 Polypost replaces the tedious manual workflow of creating a blog post in Strapi (filling out 7+ fields, uploading each image, clicking "Translate with AI" 10 times, then clicking "Publish" 11 times) with a single 4-step web UI that finishes the entire pipeline in under 5 minutes.
+<img width="2048" height="1152" alt="polypost介绍" src="https://github.com/user-attachments/assets/36b38617-184b-4e80-8447-d2d465f8e9d1" />
 
 👋 **零基础第一次用？看这里：[手把手安装教程 →](./安装教程.md)**
 
