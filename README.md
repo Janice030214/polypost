@@ -1,3 +1,5 @@
+<img width="2048" height="1152" alt="polypost介绍" src="https://github.com/user-attachments/assets/36b38617-184b-4e80-8447-d2d465f8e9d1" />
+
 # Polypost
 
 > **One-click multilingual blog publisher for Strapi.**
