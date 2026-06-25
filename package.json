@@ -1,0 +1,30 @@
+{
+  "name": "polypost",
+  "version": "1.0.0",
+  "description": "One-click multilingual blog publisher for Strapi: paste an article, auto-translate to 11 languages, and publish in minutes.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "strapi",
+    "blog",
+    "i18n",
+    "translation",
+    "cms",
+    "ai",
+    "multilingual",
+    "publisher"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-html-markdown": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polypost · Strapi Blog Uploader</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%239a7fd9'/><stop offset='1' stop-color='%236f5bb8'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><rect x='16' y='13' width='28' height='38' rx='3' fill='%23fff' opacity='0.96'/><path d='M 41 13 L 49 21 L 41 21 Z' fill='%23ece4ff'/><rect x='22' y='21' width='18' height='3' rx='1.5' fill='%236f5bb8'/><rect x='22' y='28' width='14' height='2' rx='1' fill='%23b9a4dd'/><rect x='22' y='33' width='18' height='2' rx='1' fill='%23b9a4dd'/><rect x='22' y='38' width='12' height='2' rx='1' fill='%23b9a4dd'/><circle cx='25' cy='46' r='1.6' fill='%236f5bb8'/><circle cx='31' cy='46' r='1.6' fill='%238b6dc4'/><circle cx='37' cy='46' r='1.6' fill='%23b9a4dd'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<style>
+  :root {
+    /* 淡紫色系 */
+    --bg: #f4f0fb;
+    --bg-2: #ece5f7;
+    --surface: #ffffff;
+    --warm: #faf7ff;
+    --accent: #6f5bb8;
+    --accent-2: #8b6dc4;
+    --accent-soft: #efe8fa;
+    --ink: #2e2049;
+    --ink-2: #4a3a72;
+    --muted: #806d9c;
+    --success: #4a7a2b;
+    --success-soft: #ecf3df;
+    --warn: #c84a1d;
+    --warn-soft: #fce6dd;
+    --border: #ddd0ee;
+    --border-strong: #b9a4dd;
+    --shadow: 0 6px 24px rgba(111, 91, 184, 0.10);
+    --shadow-sm: 0 2px 8px rgba(111, 91, 184, 0.08);
+    --serif: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+    --hand: 'Caveat', cursive;
+    --sans: -apple-system, "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 16px 16px, rgba(111,91,184,0.07) 1.4px, transparent 1.6px) 0 0/48px 48px,
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 100px; }
+
+  /* ====== 顶部标题 ====== */
+  .page-head { text-align: center; padding: 8px 0 24px; position: relative; }
+  .page-head .kicker { font-family: var(--hand); font-size: 26px; color: var(--accent); display: block; transform: rotate(-2deg); margin-bottom: 2px; }
+  .page-head h1 { font-family: var(--serif); font-weight: 700; font-size: 40px; letter-spacing: .5px; margin: 0; color: var(--ink); }
+  .page-head h1 .heart { color: var(--accent); font-size: .58em; font-family: ui-monospace, "SF Mono", Menlo, monospace; vertical-align: 0.18em; background: var(--accent-soft); padding: 4px 10px; border-radius: 8px; margin-left: 6px; letter-spacing: -1px; }
+  .page-head .lede { color: var(--muted); font-size: 13px; margin-top: 10px; max-width: 520px; margin-left: auto; margin-right: auto; }
+  .page-head::before, .page-head::after {
+    content: ''; position: absolute; background: no-repeat center/contain;
+  }
+  /* 左：节点 / 电路风（淡紫） */
+  .page-head::before {
+    left: 8%; top: 8px;
+    width: 56px; height: 46px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 46'%3E%3Cg fill='none' stroke='%23b9a4dd' stroke-width='1.4'%3E%3Cline x1='8' y1='10' x2='28' y2='6'/%3E%3Cline x1='28' y1='6' x2='48' y2='16'/%3E%3Cline x1='48' y1='16' x2='40' y2='36'/%3E%3Cline x1='40' y1='36' x2='14' y2='32'/%3E%3Cline x1='14' y1='32' x2='8' y2='10'/%3E%3Cline x1='28' y1='6' x2='40' y2='36'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='8' cy='10' r='3' fill='%237c5fc4'/%3E%3Ccircle cx='28' cy='6' r='2.4' fill='%23b9a4dd'/%3E%3Ccircle cx='48' cy='16' r='2.8' fill='%237c5fc4'/%3E%3Ccircle cx='40' cy='36' r='3' fill='%23b9a4dd'/%3E%3Ccircle cx='14' cy='32' r='2.5' fill='%237c5fc4'/%3E%3C/g%3E%3C/svg%3E");
+    opacity: .9;
+  }
+  /* 右：sparkle / 数据闪光（淡紫） */
+  .page-head::after {
+    right: 10%; top: 12px;
+    width: 50px; height: 50px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Cpath d='M25 6 L27 22 L43 25 L27 28 L25 44 L23 28 L7 25 L23 22 Z' fill='%237c5fc4' opacity='.85'/%3E%3Cpath d='M10 8 L11 13 L16 14 L11 15 L10 20 L9 15 L4 14 L9 13 Z' fill='%23b9a4dd' opacity='.85'/%3E%3Cpath d='M40 32 L41 37 L46 38 L41 39 L40 44 L39 39 L34 38 L39 37 Z' fill='%23a890d2' opacity='.85'/%3E%3C/svg%3E");
+    transform: rotate(6deg);
+    opacity: .95;
+  }
+
+  /* ====== 卡片（带washi 胶带）====== */
+  h3 { font-family: var(--serif); font-weight: 700; font-size: 22px; margin: 0 0 14px; color: var(--ink); letter-spacing: 0.3px; }
+  h4 { font-family: var(--serif); font-weight: 500; font-size: 16px; margin: 0 0 8px; color: var(--ink-2); }
+  .card {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: 28px;
+    width: 86px; height: 22px;
+    background: linear-gradient(135deg, rgba(221,208,238,.6), rgba(185,164,221,.55) 70%, rgba(221,208,238,.6));
+    border-radius: 2px;
+    transform: rotate(-3deg);
+    box-shadow: 0 1px 2px rgba(111,91,184,0.08);
+    pointer-events: none;
+  }
+  .card:nth-of-type(odd)::before { transform: rotate(-3deg); left: 24px; }
+  .card:nth-of-type(even)::before { transform: rotate(2.5deg); left: auto; right: 30px; background: linear-gradient(135deg, rgba(213,200,238,.6), rgba(175,150,215,.55), rgba(213,200,238,.6)); }
+
+  /* ====== 表单元素 ====== */
+  label { display: block; font-weight: 600; font-size: 12px; margin: 14px 0 6px; color: var(--ink-2); letter-spacing: 0.3px; text-transform: uppercase; }
+  input, textarea, select {
+    width: 100%; padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px; font-family: inherit;
+    background: var(--warm); color: var(--ink);
+    transition: border-color .15s, background .15s;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: 0; border-color: var(--accent-2); background: #fff;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+
+  /* ====== 按钮 ====== */
+  button {
+    background: var(--accent);
+    color: #fff; border: 0;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(194,24,91,0.22);
+    transition: transform .15s, box-shadow .15s, background .15s;
+    letter-spacing: 0.2px;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(194,24,91,0.28); }
+  button:active { transform: translateY(0); }
+  button.secondary { background: #fff; color: var(--accent); border: 1.5px solid var(--accent); box-shadow: 0 2px 8px rgba(194,24,91,0.10); }
+  button.secondary:hover { background: var(--accent-soft); }
+  button.success { background: var(--success); box-shadow: 0 4px 14px rgba(74,122,43,0.25); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btns { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+  /* ====== 杂项 ====== */
+  .muted { color: var(--muted); font-size: 12px; font-weight: 400; }
+  pre { background: #221b3a; color: #ece4ff; padding: 16px; border-radius: 10px; overflow: auto; max-height: 360px; font-size: 12px; white-space: pre-wrap; word-break: break-word; border: 1px solid #3a2e62; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-2); }
+  code { background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; }
+
+  /* ====== 状态条 ====== */
+  .status {
+    padding: 14px 18px; border-radius: 12px; margin-top: 16px;
+    font-size: 14px; display: none; border: 1px solid transparent;
+    position: relative;
+  }
+  .status.show { display: block; }
+  .status.ok { background: var(--success-soft); color: var(--success); border-color: #c2dd9e; }
+  .status.err { background: var(--warn-soft); color: var(--warn); border-color: #f4ad8c; white-space: pre-wrap; }
+  .status.loading { background: var(--accent-soft); color: var(--accent); border-color: var(--border-strong); }
+
+  /* ====== Tab 按钮（保留备用）====== */
+  .tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+  .tab { padding: 9px 20px; border-radius: 999px; background: #fff; color: var(--ink-2); border: 1.5px solid var(--border); cursor: pointer; font-size: 13px; font-weight: 700; transition: all .15s; }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 3px 10px rgba(194,24,91,0.22); }
+
+  /* ====== 粘贴区 ====== */
+  .paste {
+    min-height: 240px; max-height: 460px; overflow: auto;
+    border: 2px dashed var(--border-strong); border-radius: 14px;
+    padding: 18px; background: var(--warm);
+    font-size: 14px; line-height: 1.7;
+  }
+  .paste:empty:before { content: attr(data-ph); color: var(--muted); font-style: italic; }
+  .paste img { max-width: 100%; border-radius: 8px; }
+
+  /* ====== 语言徽章 ====== */
+  .langs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .langs label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 600; font-size: 12px; text-transform: none; letter-spacing: 0;
+    margin: 0; padding: 7px 14px;
+    border: 1.5px solid var(--border); border-radius: 999px;
+    background: #fff; color: var(--ink-2); cursor: pointer;
+    transition: all .15s;
+  }
+  .langs label:hover { border-color: var(--accent-2); }
+  .langs label:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .langs label:has(input:disabled) { opacity: .8; }
+  .langs input { width: auto; }
+  .langs .muted { color: var(--muted); }
+
+  /* ====== 封面（拍立得风）====== */
+  .cover { display: flex; align-items: center; gap: 20px; }
+  .cover-drop {
+    width: 220px; height: 144px;
+    border: 2px dashed var(--border-strong); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; background: #fff; color: var(--muted);
+    font-size: 13px; text-align: center; overflow: hidden;
+    padding: 10px 10px 22px; position: relative;
+    box-shadow: 0 4px 14px rgba(194,24,91,0.10);
+    transform: rotate(-1.5deg);
+    transition: transform .2s;
+  }
+  .cover-drop:hover { transform: rotate(-1.5deg) translateY(-2px); }
+  .cover-drop img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+
+  /* ====== 阶段（左侧色条）====== */
+  .stage {
+    border-left: 4px solid var(--border);
+    padding-left: 18px; margin: 16px 0;
+    position: relative;
+  }
+  .stage.done { border-color: var(--success); }
+  .stage.active { border-color: var(--accent); }
+  .stage-title { font-family: var(--serif); font-weight: 700; margin-bottom: 6px; font-size: 17px; color: var(--ink); }
+  .stage-title .muted { font-family: var(--sans); }
+
+  /* ====== 结果块 ====== */
+  .urls {
+    background: var(--accent-soft);
+    padding: 14px 16px; border-radius: 12px;
+    margin-top: 10px; border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .urls a { display: block; padding: 4px 0; font-size: 13px; word-break: break-all; }
+
+  /* ====== 分类卡片 ====== */
+  .cats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .cats { grid-template-columns: 1fr; } }
+  .cat-card {
+    border: 2px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    cursor: pointer; background: #fff;
+    transition: all .15s;
+    position: relative;
+  }
+  .cat-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .cat-card.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 4px 14px rgba(194,24,91,0.12); }
+  .cat-card .cat-name { font-family: var(--serif); font-weight: 700; font-size: 16px; color: var(--ink); }
+  .cat-card .cat-path { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--accent); margin: 4px 0; background: var(--accent-soft); display: inline-block; padding: 2px 8px; border-radius: 999px; }
+  .cat-card .cat-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* ====== 图片行 ====== */
+  .img-row { display: flex; gap: 18px; align-items: flex-start; padding: 16px 0; border-bottom: 1px dashed var(--border); }
+  .img-row:last-child { border: 0; }
+  .img-thumb { width: 220px; height: 140px; object-fit: contain; border-radius: 8px; background: var(--warm); flex-shrink: 0; border: 1px solid var(--border); padding: 4px; }
+  .img-thumb.broken { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+  .img-info { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); word-break: break-all; display: flex; flex-direction: column; gap: 8px; }
+  .img-info .img-alt-label { color: var(--ink); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .img-info .img-alt-input { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--ink); }
+  .img-info .img-alt-input.ai { background: #fff5f9; border-color: var(--border-strong); }
+  .img-widths { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+  .img-widths label {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-weight: 700; font-size: 12px; text-transform: none; letter-spacing: 0;
+    margin: 0; padding: 6px 12px;
+    border: 1.5px solid var(--border); border-radius: 999px;
+    background: #fff; color: var(--ink-2); cursor: pointer;
+  }
+  .img-widths label.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .img-widths input[type=radio] { display: none; }
+  .img-widths input[type=text] { width: 88px; padding: 6px 10px; font-size: 12px; border-radius: 999px; }
+
+  /* ====== 徽章 ====== */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-left: 6px; letter-spacing: 0.3px; }
+  .badge.ok { background: var(--success-soft); color: var(--success); }
+  .badge.err { background: var(--warn-soft); color: var(--warn); }
+  .badge.default { background: var(--accent-soft); color: var(--accent); }
+
+  /* ====== 杂项 ====== */
+  details { margin-top: 10px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  hr { border: 0; height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ====== 视觉模型 modal ====== */
+  #visionModal > div { box-shadow: 0 20px 60px rgba(194,24,91,0.20); border: 1px solid var(--border); }
+  #visionModal h3 { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <button id="langBtn" style="position:absolute;top:8px;right:8px;font-size:12px;padding:6px 14px;background:#fff;color:var(--accent);border:1.5px solid var(--accent);box-shadow:0 2px 6px rgba(111,91,184,0.12);z-index:2">English</button>
+    <span class="kicker" data-i18n="kicker">一键发布到</span>
+    <h1><span data-i18n="title">Strapi 博客上传</span> <span class="heart">&lt;/&gt;</span></h1>
+    <p class="lede" data-i18n="lede">处理 · 翻译 · 同步 · 发布 —— 多语言一条龙，告别手动填字段</p>
+  </div>
+
+  <div class="card">
+    <h3 data-i18n="mode.title">模式</h3>
+    <div class="tabs">
+      <div class="tab active" data-emode="new" data-i18n="mode.new">新建文章</div>
+      <div class="tab" data-emode="edit" data-i18n="mode.edit">编辑已有（覆盖）</div>
+    </div>
+    <div id="editPane" style="display:none">
+      <label data-i18n="edit.refLabel">文章 documentId 或后台 URL</label>
+      <div style="display:flex;gap:8px">
+        <input id="editRef" placeholder="例：me5mdxtls7r6xnbq5nnej4aw  或  https://strapi-admin.atlascloud.ai/admin/content-manager/collection-types/api::blog.blog/XXXX" data-i18n-attr="placeholder" data-i18n="edit.refPlaceholder" />
+        <button class="secondary" id="loadBtn" style="white-space:nowrap" data-i18n="edit.loadBtn">加载</button>
+      </div>
+      <div id="loadedInfo" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 data-i18n="content.title">① 文章内容</h3>
+    <label data-i18n="content.pasteHint">把 Lark / 网页文章全选复制，粘贴到下面（含图片）</label>
+    <div id="paste" class="paste" contenteditable="true" data-ph="在这里粘贴文章内容（Ctrl/Cmd+V）…" data-i18n-attr="data-ph" data-i18n="content.pastePlaceholder"></div>
+    <div class="btns">
+      <button class="secondary" id="previewBtn" data-i18n="content.previewBtn">预览（不上传）</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 data-i18n="cover.title">② 封面 cover</h3>
+    <div class="cover">
+      <div class="cover-drop" id="coverDrop" data-i18n="cover.drop">点击选择 / 拖拽封面图</div>
+      <div>
+        <button class="secondary" id="coverClear" style="display:none" data-i18n="cover.clearBtn">移除封面</button>
+        <p class="muted" data-i18n="cover.hint">不传封面则用正文里第一张图。封面为必填。</p>
+      </div>
+    </div>
+    <input id="coverFile" type="file" accept="image/*" style="display:none" />
+  </div>
+
+  <div class="card">
+    <h3 data-i18n="meta.title">③ 分类与元数据</h3>
+    <label data-i18n="meta.categoryLabel">category（决定官网 URL 路径）</label>
+    <div id="cats" class="cats"></div>
+
+    <div style="margin-top:18px">
+      <h4 style="margin:0 0 6px;font-size:13px;font-weight:600"><span data-i18n="meta.overrideTitle">可选覆盖</span> <span class="muted" style="font-weight:400" data-i18n="meta.overrideHint">（留空＝从文章自动识别；这里填写会覆盖自动识别结果）</span></h4>
+      <label data-i18n="meta.titleLabel">标题</label>
+      <input id="title" placeholder="留空＝frontmatter / 第一个标题" data-i18n-attr="placeholder" data-i18n="meta.titlePh" />
+      <label data-i18n="meta.descLabel">描述 description</label>
+      <textarea id="description" placeholder="留空＝frontmatter / 第一段（建议 150-160 字）" data-i18n-attr="placeholder" data-i18n="meta.descPh"></textarea>
+      <div class="row">
+        <div><label data-i18n="meta.authorLabel">作者</label><input id="author" placeholder="Atlas Cloud" /></div>
+        <div><label data-i18n="meta.dateLabel">发布日期 time</label><input id="time" type="date" /></div>
+      </div>
+      <div class="row">
+        <div><label>Slug</label><input id="slug" placeholder="留空＝由标题生成" data-i18n-attr="placeholder" data-i18n="meta.slugPh" /></div>
+        <div><label>coverYoutubeId</label><input id="coverYoutubeId" placeholder="例如 ofiM4ThgLAY" data-i18n-attr="placeholder" data-i18n="meta.coverYTPh" /></div>
+      </div>
+      <label>metaTitle</label>
+      <input id="metaTitle" placeholder="SEO 标题" data-i18n-attr="placeholder" data-i18n="meta.metaTitlePh" />
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span data-i18n="lang.title">④ 选择要发布的语言</span> <span class="muted" data-i18n="lang.count">（共 11 个）</span></h3>
+    <div style="margin-bottom:10px"><button class="secondary" id="langAll" data-i18n="lang.allBtn">全选 11 个</button> <button class="secondary" id="langNone" data-i18n="lang.onlyEnBtn">只 en</button></div>
+    <div id="langs" class="langs"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0"><span data-i18n="actions.title">⑤ 操作</span> <span class="muted" data-i18n="actions.subtitle">（按顺序点）</span></h3>
+      <div style="display:flex;gap:8px">
+        <button class="secondary" id="reviewSettingsBtn" style="font-size:12px;padding:6px 12px" data-i18n="actions.reviewSettings">⚙️ 审稿模型设置</button>
+        <button class="secondary" id="visionSettingsBtn" style="font-size:12px;padding:6px 12px" data-i18n="actions.visionSettings">⚙️ 视觉模型设置</button>
+      </div>
+    </div>
+
+    <div class="stage" id="stage1">
+      <div class="stage-title" data-i18n="step1.title">第 1 步：处理文章</div>
+      <p class="muted" data-i18n="step1.desc">解析 HTML、把正文图片搬到 Strapi CDN、上传封面、解析 frontmatter。完成后下方「正文图片宽度」会出现每张图的预览和宽度选择。</p>
+      <button id="prepareBtn" data-i18n="step1.btn">📦 处理文章</button>
+      <div id="prepareResult"></div>
+    </div>
+
+    <div class="stage" id="imageStage">
+      <div class="stage-title"><span data-i18n="imageStage.title">正文图片宽度</span> <span class="muted" style="font-weight:400" data-i18n="imageStage.subtitle">（默认 64%。每张图可单独调，应用到所有语言）</span></div>
+      <div id="imageList"><p class="muted" data-i18n="imageStage.hint">点上面「处理文章」之后，每张正文图会在这里出现，可单独选 64% / 80% / 100% 或自定义宽度。</p></div>
+    </div>
+
+    <div class="stage" id="reviewStage" style="display:none">
+      <div class="stage-title"><span data-i18n="review.title">🔍 AI 审稿结果</span> <span class="muted" id="reviewMeta" style="font-weight:400;font-size:12px"></span></div>
+      <div id="reviewBody"></div>
+    </div>
+
+    <div class="stage" id="stage2">
+      <div class="stage-title" data-i18n="step2.title">第 2 步：一键翻译（先调整完图片宽度再点）</div>
+      <p class="muted" data-i18n="step2.desc">并行翻译所有选中的语言。</p>
+      <button id="translateBtn" disabled data-i18n="step2.btn">🌐 一键翻译</button>
+      <div id="translateResult"></div>
+    </div>
+
+    <div class="stage" id="stripStage">
+      <div class="stage-title"><span data-i18n="strip.title">可选：清除错误格式</span> <span class="muted" style="font-weight:400" data-i18n="strip.subtitle">（去掉 atlascloud.ai 超链接、行内代码、规整空行等）</span></div>
+      <p class="muted" data-i18n="strip.desc">应用到 en + 所有翻译语种。如果已经同步过会自动覆盖更新 Strapi。</p>
+      <button id="stripBtn" class="secondary" disabled data-i18n="strip.btn">🧹 清除错误格式</button>
+    </div>
+
+    <div class="stage" id="stage3">
+      <div class="stage-title" data-i18n="step3.title">第 3 步：一键同步到 Strapi（创建草稿）</div>
+      <p class="muted" data-i18n="step3.desc">把 en + 翻译后的每个语种都建成草稿；每张图的宽度按你的选择写入。</p>
+      <button id="syncBtn" disabled data-i18n="step3.btn">📤 一键同步到 Strapi</button>
+      <div id="syncResult"></div>
+    </div>
+
+    <div class="stage" id="stage4">
+      <div class="stage-title" data-i18n="step4.title">第 4 步：一键发布（所有语言）</div>
+      <p class="muted" data-i18n="step4.desc">把每个 locale 的草稿发布出去，并返回官网链接。</p>
+      <button id="publishBtn" class="success" disabled data-i18n="step4.btn">🚀 一键发布所有语言</button>
+      <div id="publishResult"></div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <!-- 视觉模型设置 modal -->
+  <div id="visionModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:90%">
+      <h3 style="margin-top:0"><span data-i18n="vmModal.title">⚙️ 视觉模型设置</span> <span class="muted" style="font-weight:400;font-size:12px" data-i18n="vmModal.subtitle">（处理文章时给图片自动生成 alt）</span></h3>
+      <label data-i18n="modal.baseUrlLabel">Base URL（OpenAI 兼容接口）</label>
+      <input id="vmBase" placeholder="https://api.atlascloud.ai/v1" />
+      <label data-i18n="modal.modelLabel">模型</label>
+      <select id="vmPreset" style="margin-bottom:6px">
+        <option value="qwen/qwen3-vl-30b-a3b-instruct" data-i18n="vmModel.opt1">qwen/qwen3-vl-30b-a3b-instruct（推荐，快）</option>
+        <option value="qwen/qwen3-vl-235b-a22b-instruct" data-i18n="vmModel.opt2">qwen/qwen3-vl-235b-a22b-instruct（大模型）</option>
+        <option value="qwen/qwen3-vl-8b-instruct" data-i18n="vmModel.opt3">qwen/qwen3-vl-8b-instruct（最快）</option>
+        <option value="zai-org/glm-5v-turbo">zai-org/glm-5v-turbo</option>
+        <option value="moonshotai/kimi-k2.6" data-i18n="vmModel.opt5">moonshotai/kimi-k2.6（慢）</option>
+        <option value="__custom__" data-i18n="modal.customOpt">自定义…</option>
+      </select>
+      <input id="vmModel" placeholder="自定义时填模型名" data-i18n-attr="placeholder" data-i18n="modal.customModelPh" />
+      <label data-i18n="modal.keyLabel">API Key</label>
+      <input id="vmKey" type="password" placeholder="apikey-..." />
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="secondary" id="vmCancel" data-i18n="modal.cancelBtn">取消</button>
+        <button id="vmSave" data-i18n="modal.saveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 审稿模型 modal -->
+  <div id="reviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:90%">
+      <h3 style="margin-top:0"><span data-i18n="rmModal.title">⚙️ 审稿模型设置</span> <span class="muted" style="font-weight:400;font-size:12px" data-i18n="rmModal.subtitle">（点"预览"时检查格式问题）</span></h3>
+      <label>Base URL（OpenAI 兼容接口）</label>
+      <input id="rmBase" placeholder="https://api.atlascloud.ai/v1" />
+      <label>模型</label>
+      <select id="rmPreset" style="margin-bottom:6px">
+        <option value="deepseek-ai/deepseek-v4-pro" data-i18n="rmModel.opt1">deepseek-ai/deepseek-v4-pro（推荐，长上下文）</option>
+        <option value="deepseek-ai/deepseek-v4-flash" data-i18n="rmModel.opt2">deepseek-ai/deepseek-v4-flash（快）</option>
+        <option value="deepseek-ai/DeepSeek-V3.2-Exp">deepseek-ai/DeepSeek-V3.2-Exp</option>
+        <option value="qwen/qwen3.6-plus" data-i18n="rmModel.opt4">qwen/qwen3.6-plus（大）</option>
+        <option value="Qwen/Qwen3-Next-80B-A3B-Instruct" data-i18n="rmModel.opt5">Qwen3-Next-80B-A3B-Instruct（快）</option>
+        <option value="zai-org/glm-4.7">zai-org/glm-4.7</option>
+        <option value="moonshotai/Kimi-K2-Instruct-0905">moonshotai/Kimi-K2-Instruct-0905</option>
+        <option value="__custom__">自定义…</option>
+      </select>
+      <input id="rmModel" placeholder="自定义时填模型名" data-i18n-attr="placeholder" data-i18n="modal.customModelPh" />
+      <label>API Key</label>
+      <input id="rmKey" type="password" placeholder="apikey-..." />
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="secondary" id="rmCancel" data-i18n="modal.cancelBtn">取消</button>
+        <button id="rmSave" data-i18n="modal.saveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card" id="previewCard" style="display:none">
+    <h3 data-i18n="previewCard.title">Markdown 预览</h3>
+    <p class="muted" id="previewMeta"></p>
+    <pre id="previewMd"></pre>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ===== i18n 中英文切换 =====
+const I18N = {
+  'kicker':                { zh: '一键发布到', en: 'One-click publish to' },
+  'title':                 { zh: 'Strapi 博客上传', en: 'Strapi Blog Uploader' },
+  'lede':                  { zh: '处理 · 翻译 · 同步 · 发布 —— 多语言一条龙，告别手动填字段', en: 'Process · Translate · Sync · Publish — multilingual in one go' },
+  'mode.title':            { zh: '模式', en: 'Mode' },
+  'mode.new':              { zh: '新建文章', en: 'New article' },
+  'mode.edit':             { zh: '编辑已有（覆盖）', en: 'Edit existing (overwrite)' },
+  'edit.refLabel':         { zh: '文章 documentId 或后台 URL', en: 'Article documentId or admin URL' },
+  'edit.loadBtn':          { zh: '加载', en: 'Load' },
+  'content.title':         { zh: '① 文章内容', en: '① Article content' },
+  'content.pasteHint':     { zh: '把 Lark / 网页文章全选复制，粘贴到下面（含图片）', en: 'Select all from Lark / a webpage and paste below (incl. images)' },
+  'content.previewBtn':    { zh: '预览（不上传）', en: 'Preview (no upload)' },
+  'cover.title':           { zh: '② 封面 cover', en: '② Cover' },
+  'cover.drop':            { zh: '点击选择 / 拖拽封面图', en: 'Click to select / drag image' },
+  'cover.clearBtn':        { zh: '移除封面', en: 'Remove cover' },
+  'cover.hint':            { zh: '不传封面则用正文里第一张图。封面为必填。', en: 'If empty, uses first body image. Cover is required.' },
+  'meta.title':            { zh: '③ 分类与元数据', en: '③ Category & metadata' },
+  'meta.categoryLabel':    { zh: 'category（决定官网 URL 路径）', en: 'category (sets site URL path)' },
+  'meta.titleLabel':       { zh: '标题', en: 'Title' },
+  'meta.descLabel':        { zh: '描述 description', en: 'Description' },
+  'meta.authorLabel':      { zh: '作者', en: 'Author' },
+  'meta.dateLabel':        { zh: '发布日期 time', en: 'Publish date' },
+  'lang.allBtn':           { zh: '全选 11 个', en: 'Select all 11' },
+  'lang.onlyEnBtn':        { zh: '只 en', en: 'Only en' },
+  'actions.reviewSettings':{ zh: '⚙️ 审稿模型设置', en: '⚙️ Review model' },
+  'actions.visionSettings':{ zh: '⚙️ 视觉模型设置', en: '⚙️ Vision model' },
+  'step1.title':           { zh: '第 1 步：处理文章', en: 'Step 1: Process article' },
+  'step1.desc':            { zh: '解析 HTML、把正文图片搬到 Strapi CDN、上传封面、解析 frontmatter。完成后下方「正文图片宽度」会出现每张图的预览和宽度选择。', en: 'Parse HTML, upload body images to Strapi CDN, upload cover, parse frontmatter. After this, "Image widths" below will show each image with width options.' },
+  'step1.btn':             { zh: '📦 处理文章', en: '📦 Process' },
+  'step2.title':           { zh: '第 2 步：一键翻译（先调整完图片宽度再点）', en: 'Step 2: Translate (adjust image widths first)' },
+  'step2.desc':            { zh: '并行翻译所有选中的语言。', en: 'Parallel translate selected languages.' },
+  'step2.btn':             { zh: '🌐 一键翻译', en: '🌐 Translate' },
+  'strip.desc':            { zh: '应用到 en + 所有翻译语种。如果已经同步过会自动覆盖更新 Strapi。', en: 'Applies to en + all translations. Auto-syncs to Strapi if already synced.' },
+  'strip.btn':             { zh: '🧹 清除错误格式', en: '🧹 Clean format' },
+  'step3.title':           { zh: '第 3 步：一键同步到 Strapi（创建草稿）', en: 'Step 3: Sync to Strapi (create drafts)' },
+  'step3.desc':            { zh: '把 en + 翻译后的每个语种都建成草稿；每张图的宽度按你的选择写入。', en: 'Create drafts for en + each translated locale; image widths written per your selection.' },
+  'step3.btn':             { zh: '📤 一键同步到 Strapi', en: '📤 Sync to Strapi' },
+  'step4.title':           { zh: '第 4 步：一键发布（所有语言）', en: 'Step 4: Publish (all languages)' },
+  'step4.desc':            { zh: '把每个 locale 的草稿发布出去，并返回官网链接。', en: 'Publish each locale draft and return the public URLs.' },
+  'step4.btn':             { zh: '🚀 一键发布所有语言', en: '🚀 Publish all languages' },
+
+  // 编辑模式
+  'edit.refPlaceholder':   { zh: '例：me5mdxtls7r6xnbq5nnej4aw  或  后台 URL', en: 'e.g. me5mdxtls7r6xnbq5nnej4aw  or  admin URL' },
+
+  // 文章内容
+  'content.pastePlaceholder': { zh: '在这里粘贴文章内容（Ctrl/Cmd+V）…', en: 'Paste article content here (Ctrl/Cmd+V)…' },
+
+  // 元数据
+  'meta.overrideTitle':    { zh: '可选覆盖', en: 'Optional overrides' },
+  'meta.overrideHint':     { zh: '（留空＝从文章自动识别；这里填写会覆盖自动识别结果）', en: '(Empty = auto-detect from article; fill to override)' },
+  'meta.titlePh':          { zh: '留空＝frontmatter / 第一个标题', en: 'Empty = frontmatter / first heading' },
+  'meta.descPh':           { zh: '留空＝frontmatter / 第一段（建议 150-160 字）', en: 'Empty = frontmatter / first paragraph (150-160 chars recommended)' },
+  'meta.slugPh':           { zh: '留空＝由标题生成', en: 'Empty = generated from title' },
+  'meta.coverYTPh':        { zh: '例如 ofiM4ThgLAY', en: 'e.g. ofiM4ThgLAY' },
+  'meta.metaTitlePh':      { zh: 'SEO 标题', en: 'SEO title' },
+
+  // 语言区
+  'lang.title':            { zh: '④ 选择要发布的语言', en: '④ Languages to publish' },
+  'lang.count':            { zh: '（共 11 个）', en: '(11 total)' },
+
+  // 操作区
+  'actions.title':         { zh: '⑤ 操作', en: '⑤ Actions' },
+  'actions.subtitle':      { zh: '（按顺序点）', en: '(click in order)' },
+
+  // 图片宽度
+  'imageStage.title':      { zh: '正文图片宽度', en: 'Image widths' },
+  'imageStage.subtitle':   { zh: '（默认 64%。每张图可单独调，应用到所有语言）', en: '(Default 64%. Adjust each image; applied to all languages)' },
+  'imageStage.hint':       { zh: '点上面「处理文章」之后，每张正文图会在这里出现，可单独选 64% / 80% / 100% 或自定义宽度。', en: 'After "Process article" above, each body image appears here. Pick 64% / 80% / 100% or custom width.' },
+  'imageStage.empty':      { zh: '这篇文章正文里没有检测到图片。', en: 'No images detected in this article body.' },
+  'imageStage.altLabel':   { zh: 'Alt 文本', en: 'Alt text' },
+  'imageStage.altAiBadge': { zh: 'AI 已填', en: 'AI-filled' },
+  'imageStage.altManual':  { zh: '（手动填写）', en: '(Fill manually)' },
+  'imageStage.altPh':      { zh: '简短描述这张图（供无障碍/SEO 使用）', en: 'Briefly describe this image (for a11y / SEO)' },
+  'imageStage.customWidth':{ zh: '自定义', en: 'Custom' },
+
+  // 审稿
+  'review.title':          { zh: '🔍 AI 审稿结果', en: '🔍 AI Review' },
+  'review.noConfig':       { zh: '未配置审稿模型，跳过 AI 审稿。点右上 ⚙️ 审稿模型设置 即可开启。', en: 'Review model not configured. Click ⚙️ Review model in the top-right to enable.' },
+  'review.noIssues':       { zh: '✅ 没发现明显的格式问题。', en: '✅ No obvious format issues found.' },
+  'review.applyBtn':       { zh: '✨ 一键修改', en: '✨ Apply all fixes' },
+  'review.original':       { zh: '原文：', en: 'Original: ' },
+  'review.suggestion':     { zh: '建议：', en: 'Suggestion: ' },
+  'review.appliedMsg':     { zh: '✨ 已应用 {0} 个字段修改 + {1} 个正文修改。请重新点「处理文章」让改动生效。', en: '✨ Applied {0} field fix(es) + {1} body fix(es). Click "Process article" again to apply.' },
+  'review.failed':         { zh: 'AI 审稿调用失败：{0}', en: 'AI review failed: {0}' },
+
+  // 清除错误格式 stage
+  'strip.title':           { zh: '可选：清除错误格式', en: 'Optional: Clean format' },
+  'strip.subtitle':        { zh: '（去掉 atlascloud.ai 超链接、行内代码、规整空行等）', en: '(Remove atlascloud.ai links, inline code, normalize blank lines, etc.)' },
+
+  // 模态框
+  'modal.baseUrlLabel':    { zh: 'Base URL（OpenAI 兼容接口）', en: 'Base URL (OpenAI-compatible endpoint)' },
+  'modal.modelLabel':      { zh: '模型', en: 'Model' },
+  'modal.keyLabel':        { zh: 'API Key', en: 'API Key' },
+  'modal.customModelPh':   { zh: '自定义时填模型名', en: 'Custom model name' },
+  'modal.cancelBtn':       { zh: '取消', en: 'Cancel' },
+  'modal.saveBtn':         { zh: '保存', en: 'Save' },
+  'modal.customOpt':       { zh: '自定义…', en: 'Custom…' },
+  'vmModal.title':         { zh: '⚙️ 视觉模型设置', en: '⚙️ Vision model settings' },
+  'vmModal.subtitle':      { zh: '（处理文章时给图片自动生成 alt）', en: '(Auto-generate alt text for images during processing)' },
+  'rmModal.title':         { zh: '⚙️ 审稿模型设置', en: '⚙️ Review model settings' },
+  'rmModal.subtitle':      { zh: '（点"预览"时检查格式问题）', en: '(Check format issues when "Preview" is clicked)' },
+  'vmModel.opt1':          { zh: 'qwen/qwen3-vl-30b-a3b-instruct（推荐，快）', en: 'qwen/qwen3-vl-30b-a3b-instruct (recommended, fast)' },
+  'vmModel.opt2':          { zh: 'qwen/qwen3-vl-235b-a22b-instruct（大模型）', en: 'qwen/qwen3-vl-235b-a22b-instruct (large)' },
+  'vmModel.opt3':          { zh: 'qwen/qwen3-vl-8b-instruct（最快）', en: 'qwen/qwen3-vl-8b-instruct (fastest)' },
+  'vmModel.opt5':          { zh: 'moonshotai/kimi-k2.6（慢）', en: 'moonshotai/kimi-k2.6 (slow)' },
+  'rmModel.opt1':          { zh: 'deepseek-ai/deepseek-v4-pro（推荐，长上下文）', en: 'deepseek-ai/deepseek-v4-pro (recommended, long context)' },
+  'rmModel.opt2':          { zh: 'deepseek-ai/deepseek-v4-flash（快）', en: 'deepseek-ai/deepseek-v4-flash (fast)' },
+  'rmModel.opt4':          { zh: 'qwen/qwen3.6-plus（大）', en: 'qwen/qwen3.6-plus (large)' },
+  'rmModel.opt5':          { zh: 'Qwen3-Next-80B-A3B-Instruct（快）', en: 'Qwen3-Next-80B-A3B-Instruct (fast)' },
+
+  // 预览卡片
+  'previewCard.title':     { zh: 'Markdown 预览', en: 'Markdown preview' },
+
+  // category 默认
+  'category.default':      { zh: '默认', en: 'Default' },
+
+  // 状态条 / 通知（动态字符串）
+  's.previewLoading':      { zh: '转换中…', en: 'Converting…' },
+  's.pasteFirst':          { zh: '请先粘贴内容', en: 'Please paste content first' },
+  's.previewFailed':       { zh: '预览失败：{0}', en: 'Preview failed: {0}' },
+  's.refFirst':            { zh: '请填 documentId 或后台 URL', en: 'Please fill documentId or admin URL' },
+  's.loading':             { zh: '加载中…', en: 'Loading…' },
+  's.loadFailed':          { zh: '加载失败：{0}', en: 'Load failed: {0}' },
+  's.loadSuccess':         { zh: '加载成功。可直接修改字段后点「覆盖更新」；或修改正文后点「处理文章」重新处理，再翻译。', en: 'Loaded. Edit fields then click "Overwrite update"; or edit content then click "Process article" and re-translate.' },
+  's.prepLoading':         { zh: '处理 HTML、搬运正文图片、上传封面…（图多时较慢）', en: 'Processing HTML, uploading body images and cover…(slower with more images)' },
+  's.prepFailed':          { zh: '处理失败：{0}', en: 'Process failed: {0}' },
+  's.prepDone':            { zh: '第 1 步完成。先到下方「正文图片宽度」调整图片，然后点「一键翻译」。', en: 'Step 1 done. Adjust image widths below, then click "Translate".' },
+  's.tFirstPrep':          { zh: '请先完成第 1 步「处理文章」', en: 'Please complete Step 1 "Process article" first' },
+  's.tLoading':            { zh: '并行翻译 {0} 种语言…', en: 'Translating {0} languages in parallel…' },
+  's.tFailed':             { zh: '翻译失败：{0}', en: 'Translation failed: {0}' },
+  's.tDone':               { zh: '第 2 步完成。现在可以点「一键同步到 Strapi」。', en: 'Step 2 done. You can now click "Sync to Strapi".' },
+  's.syncFirstTranslate':  { zh: '请先完成「一键翻译」', en: 'Please complete "Translate" first' },
+  's.syncEditFirstLoad':   { zh: '编辑模式：请先「加载」一篇现有文章', en: 'Edit mode: please "Load" an existing article first' },
+  's.syncCreate':          { zh: '创建草稿', en: 'creating drafts' },
+  's.syncOverwrite':       { zh: '覆盖更新', en: 'overwriting' },
+  's.syncLoading':         { zh: '正在 {0}…', en: '{0}…' },
+  's.syncFailed':          { zh: '同步失败：{0}', en: 'Sync failed: {0}' },
+  's.syncDone':            { zh: '第 3 步完成。可以去后台 review，或直接点「一键发布」。', en: 'Step 3 done. Review in admin or click "Publish all" directly.' },
+  's.pubFirstSync':        { zh: '请先完成「一键同步」', en: 'Please complete "Sync" first' },
+  's.pubLoading':          { zh: '正在发布所有语言…', en: 'Publishing all languages…' },
+  's.pubFailed':           { zh: '发布失败：{0}', en: 'Publish failed: {0}' },
+  's.pubAllDone':          { zh: '🎉 全部完成！', en: '🎉 All done!' },
+  's.stripCleaned':        { zh: '🧹 已清理（{0}）：{1}。代码块未动。', en: '🧹 Cleaned ({0}): {1}. Code blocks untouched.' },
+  's.stripScopeWithTr':    { zh: 'en + {0} 个翻译语种', en: 'en + {0} translated locales' },
+  's.stripScopeEnOnly':    { zh: '仅 en（翻译后再点会刷新所有翻译）', en: 'en only (click again after translation to refresh all)' },
+  's.stripPartInline':     { zh: '{0} 处行内代码', en: '{0} inline code span(s)' },
+  's.stripPartAtlas':      { zh: '{0} 处 api.atlascloud.ai 链接', en: '{0} api.atlascloud.ai link(s)' },
+  's.stripPartSpacing':    { zh: '块间空行已规整', en: 'block spacing normalized' },
+  's.stripPushHint':       { zh: '。点「同步到 Strapi」后才会写到后台。', en: '. Click "Sync to Strapi" to push to backend.' },
+  's.stripPushing':        { zh: '；正在覆盖更新 Strapi…', en: '; overwriting Strapi…' },
+  's.stripPushed':         { zh: '；并已自动覆盖更新 Strapi（{0}）。如果文章已发布，需到第 4 步「重新发布」让线上生效。', en: '; auto-overwrote Strapi ({0}). If published, click "Publish" in Step 4 again to push live.' },
+  's.stripPushFailed':     { zh: '；但自动同步失败：{0}。请手动点「同步到 Strapi」或「覆盖更新」。', en: '; but auto-sync failed: {0}. Click "Sync to Strapi" or "Overwrite update" manually.' },
+  's.vmInvalid':           { zh: '视觉模型设置：Base URL、模型、API Key 都必须填', en: 'Vision model: Base URL, Model and API Key are all required' },
+  's.vmSaved':             { zh: '✅ 视觉模型已设置：{0}', en: '✅ Vision model saved: {0}' },
+  's.rmInvalid':           { zh: '审稿模型设置：Base URL、模型、API Key 都必须填', en: 'Review model: Base URL, Model and API Key are all required' },
+  's.rmSaved':             { zh: '✅ 审稿模型已设置：{0}', en: '✅ Review model saved: {0}' },
+  's.prepResultDone':      { zh: '✅ 文章已处理', en: '✅ Article processed' },
+  's.prepImageCount':      { zh: '正文图片 {0} 张', en: '{0} body image(s)' },
+  's.prepWarn':            { zh: '⚠️ {0} 张正文图未能搬运（可能是 Lark 私链或非图片资源），原始链接已保留', en: '⚠️ {0} body image(s) could not be uploaded (likely Lark private link or non-image), original URLs kept' },
+  's.prepHintRow':         { zh: '请到下方「正文图片宽度」逐张调整宽度，再点第 2 步。', en: 'Go to "Image widths" below to adjust each, then click Step 2.' },
+  's.prepResultTitle':     { zh: '标题', en: 'Title' },
+  's.tResultDone':         { zh: '✅ 翻译完成', en: '✅ Translation done' },
+  's.tResultReady':        { zh: '已就绪：', en: 'Ready: ' },
+  's.tResultFailed':       { zh: '失败：', en: 'Failed: ' },
+  's.syncResultCreated':   { zh: '✅ 已建草稿：', en: '✅ Drafts created: ' },
+  's.syncResultOpen':      { zh: '在 Strapi 后台打开 →', en: 'Open in Strapi admin →' },
+  's.pubResultDone':       { zh: '✅ 已发布。官网链接：', en: '✅ Published. Site URLs:' },
+  's.previewMeta':         { zh: '标题：{0} ｜ slug：{1} ｜ 正文图片 {2} 张', en: 'Title: {0} | slug: {1} | {2} body image(s)' },
+  's.previewMetaWarn':     { zh: ' ｜ ⚠️ {0} 张图抓不到', en: ' | ⚠️ {0} image(s) unreachable' },
+  's.previewDone':         { zh: '预览完成。AI 审稿进行中…', en: 'Preview done. AI review in progress…' },
+  's.previewWithReviewOk': { zh: '✅ 预览完成 + AI 审稿：未发现明显格式问题。', en: '✅ Preview done + AI review: no obvious format issues.' },
+  's.previewWithReviewN':  { zh: '✅ 预览完成 + AI 审稿：发现 {0} 个问题，请到下方"AI 审稿结果"查看并按需点「一键修改」。', en: '✅ Preview done + AI review: {0} issue(s) found. See "AI Review" below and click "Apply all fixes" if needed.' },
+  's.previewWithReviewSkip': { zh: '预览完成（未配置审稿模型，跳过 AI 审稿）。', en: 'Preview done (review model not configured, skipped).' },
+  's.previewReviewErr':    { zh: '预览完成；AI 审稿失败：{0}', en: 'Preview done; AI review failed: {0}' },
+  's.loadedInfoTpl':       { zh: '✅ 已加载：<b>{0}</b><br>documentId：<code>{1}</code> ｜ 状态：{2} ｜ 现有语言：{3}<br><span class="muted">正文已回填到「① 文章内容」可直接编辑；分类与元数据也已回填。</span>', en: '✅ Loaded: <b>{0}</b><br>documentId: <code>{1}</code> | Status: {2} | Existing locales: {3}<br><span class="muted">Body filled into "① Article content"; metadata also filled.</span>' },
+  's.published':           { zh: '已发布', en: 'Published' },
+  's.draft':               { zh: '草稿', en: 'Draft' },
+  's.coverNoPreview':      { zh: '封面无法预览<br>但仍会保留', en: 'Cover preview unavailable<br>but will be kept' },
+  's.imgNoAlt':            { zh: '(无 alt)', en: '(no alt)' },
+  's.imgBroken':           { zh: '无法预览', en: 'Cannot preview' },
+  's.editModeSyncLabel':   { zh: '✍️ 覆盖更新到 Strapi', en: '✍️ Overwrite update to Strapi' },
+  's.editModePubLabel':    { zh: '🚀 重新发布所有语言', en: '🚀 Re-publish all languages' },
+  's.newModeSyncLabel':    { zh: '📤 一键同步到 Strapi', en: '📤 Sync to Strapi' },
+  's.newModePubLabel':     { zh: '🚀 一键发布所有语言', en: '🚀 Publish all languages' },
+};
+function applyLang(lang) {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    const v = I18N[k];
+    if (!v || !v[lang]) return;
+    const attr = el.getAttribute('data-i18n-attr');
+    if (attr) { el.setAttribute(attr, v[lang]); return; }
+    if (el.id === 'coverDrop' && el.querySelector('img')) return;
+    el.textContent = v[lang];
+  });
+  $('langBtn').textContent = lang === 'zh' ? 'English' : '中文';
+  document.documentElement.lang = lang;
+  localStorage.setItem('lang', lang);
+  curLang = lang;
+  // 重渲染动态部分
+  try {
+    if (typeof prepared !== 'undefined' && prepared && Array.isArray(prepared.images)) renderImagePanel(prepared.images);
+    if (typeof editMode !== 'undefined' && $('syncBtn')) {
+      $('syncBtn').textContent = editMode === 'edit' ? t('s.editModeSyncLabel') : t('s.newModeSyncLabel');
+      $('publishBtn').textContent = editMode === 'edit' ? t('s.editModePubLabel') : t('s.newModePubLabel');
+    }
+  } catch {}
+}
+function t(key, ...args) {
+  const v = I18N[key]?.[curLang] || I18N[key]?.zh || key;
+  return args.length ? v.replace(/\{(\d+)\}/g, (_, i) => (args[+i] !== undefined ? args[+i] : '')) : v;
+}
+let curLang = localStorage.getItem('lang') || 'zh';
+$('langBtn').onclick = () => { curLang = curLang === 'zh' ? 'en' : 'zh'; applyLang(curLang); };
+if (curLang === 'en') setTimeout(() => applyLang('en'), 0);
+else $('langBtn').textContent = 'English';
+
+const statusEl = $('status');
+// API 总是打到本机服务（让页面无论在 http://localhost:4000 还是预览面板/file:// 都能用）
+const API = (location.protocol === 'http:' || location.protocol === 'https:')
+  ? '' : 'http://localhost:4000';
+// (mode 变量已废弃，统一走粘贴文章流程)
+let editMode = 'new';        // 'new' | 'edit'
+let editDocId = null;        // 编辑模式：加载的文章 documentId
+let existingCoverId = null;  // 编辑模式：保留原封面
+let existingCoverUrl = null;
+let existingLocales = [];
+let coverDataUrl = null;
+let prepared = null;     // { enFields, coverId, translations, ... } 来自第 1 步
+let documentId = null;   // 来自第 2 步
+let imageWidths = {};    // { url: '64%' | '80%' | '100%' | 自填 } per-image width
+let imageAlts = {};      // { url: 'alt text' }  — AI 初始填，用户可编辑
+
+function escapeAttr(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// 综合格式清理：去行内代码、去 api.atlascloud.ai/v1 超链接、调整块间空行
+// 规则：
+//   - 行内 `code` → code（围栏 ```...``` 保留不动）
+//   - [text](https://api.atlascloud.ai/v1...) → text
+//   - H3 紧贴上文（去掉之前的空行）
+//   - H2 前面留空行
+//   - <youtube>...</youtube> 前后都留空行
+//   - 图片前后紧贴文字；两张图片之间留空行
+function stripBadFormatting(md) {
+  if (!md) return md;
+  // 1) 去掉所有 api.atlascloud.ai 超链接（不再限定 /v1）
+  md = md.replace(/\[([^\]]+)\]\(https?:\/\/api\.atlascloud\.ai[^)]*\)/gi, '$1');
+  // 也去掉 markdown 自动链接 <https://api.atlascloud.ai...>
+  md = md.replace(/<(https?:\/\/api\.atlascloud\.ai[^>]*)>/gi, '$1');
+
+  // 2) 切分为 block：围栏→fence；连续 | 起始行→table；其他单行依类型；空白单独成 token
+  const lines = md.split('\n');
+  const items = [];
+  let inFence = false, fenceBuf = [];
+  let tableBuf = [];
+  const flushTable = () => { if (tableBuf.length) { items.push({ kind:'table', content: tableBuf.join('\n') }); tableBuf = []; } };
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) {
+      flushTable();
+      fenceBuf.push(line);
+      if (inFence) { items.push({ kind:'fence', content: fenceBuf.join('\n') }); fenceBuf = []; }
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) { fenceBuf.push(line); continue; }
+    if (line.trim() === '') { flushTable(); items.push({ kind:'blank' }); continue; }
+    const cleaned = line.replace(/`([^`\n]+)`/g, '$1');
+    const t = cleaned.trim();
+    // 表格行：以 | 起头（包含 | --- | 分隔行也匹配）
+    if (/^\|/.test(t)) { tableBuf.push(cleaned); continue; }
+    // 非表格行 → flush 之前累积的 table
+    flushTable();
+    let kind = 'text';
+    if (/^!\[[^\]]*\]\(/.test(t)) kind = 'image';
+    else if (/^<youtube>[^<]+<\/youtube>\s*$/i.test(t)) kind = 'youtube';
+    else if (/^### /.test(t)) kind = 'h3';
+    else if (/^## (?!#)/.test(t)) kind = 'h2';
+    else if (/^# (?!#)/.test(t)) kind = 'h1';
+    // 水平分隔线 (--- *** ___)：必须前后留空行，否则跟在段落后会被解析为 setext H2
+    else if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(t)) kind = 'hr';
+    items.push({ kind, content: cleaned });
+  }
+  flushTable();
+
+  // 3) 合并连续 blank，记录"原本是否有空行"
+  const blocks = [];
+  let pendingBlank = false;
+  for (const item of items) {
+    if (item.kind === 'blank') { pendingBlank = true; continue; }
+    blocks.push({ ...item, hadBlankBefore: pendingBlank });
+    pendingBlank = false;
+  }
+
+  // 4) 决定相邻 block 之间是否要空行
+  function wantBlankBetween(prev, curr) {
+    if (!prev) return false;
+    if (prev.kind === 'fence' || curr.kind === 'fence') return true;
+    // 高优先级：H2 前空一行；youtube 前后都空（无论邻居是谁）
+    if (curr.kind === 'h2') return true;
+    if (curr.kind === 'youtube' || prev.kind === 'youtube') return true;
+    // 图：紧贴文字；两张图之间空一行
+    if (prev.kind === 'image' && curr.kind === 'image') return true;
+    if (prev.kind === 'image' || curr.kind === 'image') return false;
+    // 表格：前后必须留空行！（markdown 规范要求；不留空后续段落会被吃进表格当成新行）
+    if (prev.kind === 'table' || curr.kind === 'table') return true;
+    // 水平分隔线：前后也必须留空行，否则"段落 + --- "会被解析成 setext H2 标题
+    if (prev.kind === 'hr' || curr.kind === 'hr') return true;
+    // H3 紧贴上文
+    if (curr.kind === 'h3') return false;
+    // 兜底：正文 / H1 等普通块之间默认不空行（删除莫名空白）
+    return false;
+  }
+
+  const out = [];
+  for (let i = 0; i < blocks.length; i++) {
+    if (i > 0 && wantBlankBetween(blocks[i - 1], blocks[i])) out.push('');
+    let c = blocks[i].content;
+    // 防止 CKEditor 把裸 URL 自动变蓝/带超链接：在 "https:" 后塞一个零宽空格 (U+200B)
+    // 视觉上看不见，但渲染器的 URL 检测匹配不到，所以不会自动加 <a>
+    // 任何 api.atlascloud.ai 域名都处理
+    if (blocks[i].kind !== 'fence') {
+      c = c.replace(/(https?:)(\/\/api\.atlascloud\.ai\b)/gi, '$1​$2');
+    }
+    out.push(c);
+  }
+  return out.join('\n').trim() + '\n';
+}
+
+// 用于在状态条上告诉用户清掉了多少
+function countFormatIssues(md) {
+  if (!md) return { inline: 0, atlas: 0 };
+  let inline = 0, atlas = 0, inFence = false;
+  for (const line of md.split('\n')) {
+    if (/^\s*```/.test(line)) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const ic = line.match(/`[^`\n]+`/g); if (ic) inline += ic.length;
+    const al = line.match(/\[[^\]]+\]\(https?:\/\/api\.atlascloud\.ai[^)]*\)/gi); if (al) atlas += al.length;
+  }
+  return { inline, atlas };
+}
+
+function renderImagePanel(images) {
+  imageWidths = {};
+  imageAlts = {};
+  if (!images || !images.length) {
+    $('imageList').innerHTML = '<p class="muted">'+t('imageStage.empty')+'</p>';
+    return;
+  }
+  for (const img of images) {
+    imageWidths[img.url] = img.width || '64%';
+    imageAlts[img.url] = img.alt || '';
+  }
+  const presets = ['64%', '80%', '100%'];
+  $('imageList').innerHTML = '';
+  images.forEach((img, i) => {
+    const row = document.createElement('div');
+    row.className = 'img-row';
+    const cur = imageWidths[img.url];
+    const isPreset = presets.includes(cur);
+    const aiFilled = !!img.alt; // 区分：AI 填的（蓝底）vs 空（白底）
+    row.innerHTML = `
+      <img class="img-thumb" src="${img.url}" alt="" loading="lazy" referrerpolicy="no-referrer"
+           onerror="const d=document.createElement('div');d.className='img-thumb broken';d.textContent='\u200B';d.textContent=t('s.imgBroken');this.replaceWith(d);">
+      <div class="img-info">
+        <div class="img-alt-label">${t('imageStage.altLabel')} ${aiFilled ? `<span class="badge ok" style="font-size:10px">${t('imageStage.altAiBadge')}</span>` : `<span class="muted">${t('imageStage.altManual')}</span>`}</div>
+        <input type="text" class="img-alt-input ${aiFilled?'ai':''}" placeholder="${t('imageStage.altPh')}" value="${escapeAttr(img.alt)}">
+        <div style="font-size:11px"><a href="${img.url}" target="_blank" rel="noopener">${img.url}</a></div>
+      </div>
+      <div class="img-widths" data-i="${i}">
+        ${presets.map(p => `<label class="${cur===p?'active':''}"><input type="radio" name="w-${i}" value="${p}" ${cur===p?'checked':''}>${p}</label>`).join('')}
+        <input type="text" class="img-custom" placeholder="${t('imageStage.customWidth')}" value="${isPreset ? '' : cur}">
+      </div>
+    `;
+    // alt 输入
+    const altInput = row.querySelector('.img-alt-input');
+    altInput.oninput = (e) => {
+      imageAlts[img.url] = e.target.value;
+      altInput.classList.remove('ai'); // 用户改过就脱去 AI 底色
+    };
+    // 宽度选择
+    const group = row.querySelector('.img-widths');
+    group.querySelectorAll('input[type=radio]').forEach(r => r.onchange = () => {
+      imageWidths[img.url] = r.value;
+      group.querySelectorAll('label').forEach(l => l.classList.toggle('active', l.querySelector('input').checked));
+      group.querySelector('.img-custom').value = '';
+    });
+    group.querySelector('.img-custom').oninput = (e) => {
+      const v = e.target.value.trim();
+      if (!v) return;
+      imageWidths[img.url] = v;
+      group.querySelectorAll('input[type=radio]').forEach(r => { r.checked = false; });
+      group.querySelectorAll('label').forEach(l => l.classList.remove('active'));
+    };
+    $('imageList').appendChild(row);
+  });
+}
+
+function setStatus(type, html) { statusEl.className = 'status show ' + type; statusEl.innerHTML = html; }
+function setStage(n, klass) { $('stage'+n).classList.add(klass); }
+
+// (Lark 链接模式已移除，统一走粘贴文章流程)
+
+// 模式切换（新建 / 编辑）
+document.querySelectorAll('.tab[data-emode]').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab[data-emode]').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  editMode = t.dataset.emode;
+  $('editPane').style.display = editMode === 'edit' ? 'block' : 'none';
+  $('syncBtn').textContent = editMode === 'edit' ? t('s.editModeSyncLabel') : t('s.newModeSyncLabel');
+  $('publishBtn').textContent = editMode === 'edit' ? t('s.editModePubLabel') : t('s.newModePubLabel');
+});
+
+// 加载现有文章
+$('loadBtn').onclick = async () => {
+  const ref = $('editRef').value.trim();
+  if (!ref) return setStatus('err', t('s.refFirst'));
+  setStatus('loading', t('s.loading'));
+  try {
+    const r = await fetch(API + '/api/load-blog?ref=' + encodeURIComponent(ref));
+    const txt = await r.text();
+    let d; try { d = JSON.parse(txt); } catch { throw new Error('HTTP ' + r.status + ' 非 JSON 响应：' + txt.slice(0, 200)); }
+    if (!r.ok) throw new Error('HTTP ' + r.status + '：' + (d.error || JSON.stringify(d)));
+    editDocId = d.documentId;
+    existingCoverId = d.coverId;
+    existingCoverUrl = d.coverUrl;
+    existingLocales = d.existingLocales || ['en'];
+    // 回填字段
+    $('title').value = d.title || '';
+    $('description').value = d.description || '';
+    $('metaTitle').value = d.metaTitle || '';
+    $('slug').value = d.slug || '';
+    $('author').value = d.author || '';
+    $('time').value = (d.time || '').slice(0, 10);
+    $('coverYoutubeId').value = d.coverYoutubeId || '';
+    // category
+    if (d.categoryDocId) {
+      categoryDocId = d.categoryDocId;
+      document.querySelectorAll('.cat-card').forEach(x => x.classList.toggle('selected', x.dataset.docid === categoryDocId));
+    }
+    // 现有封面预览
+    if (existingCoverUrl && !coverDataUrl) {
+      $('coverDrop').innerHTML = `<img src="${existingCoverUrl}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentElement.innerHTML='<div style=\'color:#aaa;font-size:12px\'>'+t('s.coverNoPreview')+'</div>'">`;
+      $('coverClear').style.display = 'inline-block';
+    }
+    // 语言：默认勾上现有的，其它取消
+    document.querySelectorAll('#langs input').forEach(i => {
+      if (i.disabled) return;
+      i.checked = existingLocales.includes(i.value);
+    });
+    // 把已有的 markdown 内容回填到「① 文章内容」粘贴区（渲染成 HTML 方便编辑）
+    if (d.content) {
+      // <youtube>id</youtube> 在 marked 解析时会被当作未知 HTML 保留，正好
+      const html = (typeof marked !== 'undefined' && marked.parse)
+        ? marked.parse(d.content)
+        : d.content.replace(/\n/g, '<br>');
+      $('paste').innerHTML = html;
+    }
+    // 已有正文里的图片也展示宽度（用现存的 width 作为初始值）
+    renderImagePanel(d.images || []);
+
+    // 把加载到的内容预置成 prepared 状态：
+    // 用户可以直接点「一键翻译」/「覆盖更新」，不必重新点「处理文章」
+    // 如果改了粘贴区内容，再点「处理文章」会重新走 HTML→markdown 处理
+    prepared = {
+      enFields: {
+        title: d.title || '',
+        description: d.description || '',
+        author: d.author || 'Atlas Cloud',
+        time: (d.time || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+        slug: d.slug || '',
+        content: d.content || '',
+        locale: 'en',
+        ...(d.metaTitle ? { metaTitle: d.metaTitle } : {}),
+        ...(d.coverYoutubeId ? { coverYoutubeId: d.coverYoutubeId } : {}),
+        ...(d.coverId ? { cover: d.coverId } : {}),
+        ...(d.categoryDocId ? { category: d.categoryDocId } : {}),
+      },
+      coverId: d.coverId,
+      images: d.images || [],
+      translations: d.translations || {},
+      translatedLocales: Object.keys(d.translations || {}),
+      failedTranslations: [],
+      imageCount: (d.images || []).length,
+      failedImageCount: 0,
+    };
+    setStage(1, 'done');
+    $('translateBtn').disabled = false;
+    $('stripBtn').disabled = false;
+    $('syncBtn').disabled = false; // 编辑模式：可以直接同步而不必重译
+
+    const status = d.publishedAt ? t('s.published') : t('s.draft');
+    $('loadedInfo').innerHTML = `<div class="urls">${t('s.loadedInfoTpl', d.title || '(no title)', d.documentId, status, existingLocales.join(', '))}</div>`;
+    setStatus('ok', t('s.loadSuccess'));
+  } catch (e) { setStatus('err', t('s.loadFailed', e.message)); editDocId = null; }
+};
+
+// 默认：发布日期=今天；coverYoutubeId=s8CIBscdEHI
+$('time').value = new Date().toISOString().slice(0, 10);
+$('coverYoutubeId').value = 's8CIBscdEHI';
+
+// 加载分类（3 个，写死含说明）+ 语言（11 个）
+let CATS = [];
+let categoryDocId = 'nk13xl36joeq2m6w5uucpapm'; // 默认 AI Usage（最常用）
+(async () => {
+  const meta = await (await fetch(API + '/api/meta')).json();
+  CATS = meta.categories;
+  $('cats').innerHTML = '';
+  for (const c of CATS) {
+    const card = document.createElement('div');
+    card.className = 'cat-card' + (c.docId === categoryDocId ? ' selected' : '');
+    card.dataset.docid = c.docId;
+    const isDefault = c.docId === 'nk13xl36joeq2m6w5uucpapm';
+    card.innerHTML = `
+      <div class="cat-name">${c.name}${isDefault ? ' <span class="badge default">'+t('category.default')+'</span>' : ''}</div>
+      <div class="cat-path">/blog/${c.path}/</div>
+      <div class="cat-hint">${c.hint}</div>
+    `;
+    card.onclick = () => {
+      categoryDocId = card.dataset.docid;
+      document.querySelectorAll('.cat-card').forEach(x => x.classList.toggle('selected', x.dataset.docid === categoryDocId));
+    };
+    $('cats').appendChild(card);
+  }
+})();
+function getCategoryDocId() { return categoryDocId; }
+
+// 11 语言
+const LANGS = { en:'English', zh:'简体中文', 'zh-Hant':'繁體中文', ja:'日本語', ko:'한국어', de:'Deutsch', fr:'Français', es:'Español', pt:'Português', ru:'Русский', ar:'العربية' };
+for (const [code,name] of Object.entries(LANGS)) {
+  const l = document.createElement('label');
+  l.innerHTML = `<input type="checkbox" value="${code}" ${code==='en'?'disabled checked title=""':'checked'}> ${name} <span class="muted">${code}</span>`;
+  $('langs').appendChild(l);
+}
+const selectedLocales = () => [...document.querySelectorAll('#langs input:checked:not(:disabled)')].map(i => i.value);
+const allLocales = () => ['en', ...selectedLocales()];
+$('langAll').onclick = () => { document.querySelectorAll('#langs input:not(:disabled)').forEach(i => i.checked = true); };
+$('langNone').onclick = () => { document.querySelectorAll('#langs input:not(:disabled)').forEach(i => i.checked = false); };
+
+// 封面
+function setCover(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => { coverDataUrl = r.result; $('coverDrop').innerHTML = `<img src="${coverDataUrl}">`; $('coverClear').style.display = 'inline-block'; };
+  r.readAsDataURL(file);
+}
+$('coverDrop').onclick = () => $('coverFile').click();
+$('coverFile').onchange = (e) => setCover(e.target.files[0]);
+$('coverDrop').ondragover = (e) => e.preventDefault();
+$('coverDrop').ondrop = (e) => { e.preventDefault(); setCover(e.dataTransfer.files[0]); };
+$('coverClear').onclick = () => { coverDataUrl = null; $('coverDrop').innerHTML = I18N['cover.drop'][curLang]; $('coverClear').style.display = 'none'; };
+
+function overrides() {
+  const o = {};
+  for (const k of ['title','description','author','time','slug','coverYoutubeId','metaTitle']) { const v = $(k).value.trim(); if (v) o[k] = v; }
+  o.category = getCategoryDocId();
+  return o;
+}
+
+// ===== 预览 =====
+$('previewBtn').onclick = async () => {
+  setStatus('loading', t('s.previewLoading'));
+  try {
+    if (!$('paste').innerText.trim()) throw new Error(t('s.pasteFirst'));
+    const r = await fetch(API + '/api/preview-html', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ html: $('paste').innerHTML }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    $('previewCard').style.display = 'block';
+    let meta = t('s.previewMeta', d.title || '(unrecognized)', d.slug, d.imageCount);
+    if (d.failedCount) meta += t('s.previewMetaWarn', d.failedCount);
+    $('previewMeta').textContent = meta;
+    $('previewMd').textContent = d.markdown;
+    if (!$('title').value && d.title) $('title').value = d.title;
+    if (!$('description').value && d.description) $('description').value = d.description;
+    if (!$('metaTitle').value && d.metaTitle) $('metaTitle').value = d.metaTitle;
+    if (!$('slug').value && d.slug) $('slug').value = d.slug;
+    setStatus('ok', t('s.previewDone'));
+
+    // ----- 顺带跑 AI 审稿 -----
+    try {
+      const reviewBody = {
+        fields: {
+          title: $('title').value || d.title || '',
+          description: $('description').value || d.description || '',
+          metaTitle: $('metaTitle').value || d.metaTitle || '',
+          slug: $('slug').value || d.slug || '',
+          content: d.markdown || '',
+        },
+      };
+      const rc = getReviewConfig(); if (rc) reviewBody.reviewConfig = rc;
+      const rr = await fetch(API + '/api/review', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(reviewBody) });
+      const rd = await rr.json();
+      if (!rr.ok) throw new Error(rd.error || ('HTTP ' + rr.status));
+      renderReview(rd);
+      const n = (rd.issues || []).length;
+      if (rd.skipped) setStatus('ok', t('s.previewWithReviewSkip'));
+      else if (n === 0) setStatus('ok', t('s.previewWithReviewOk'));
+      else setStatus('ok', t('s.previewWithReviewN', n));
+    } catch (rev) {
+      // 审稿失败不影响预览
+      $('reviewStage').style.display = 'block';
+      $('reviewMeta').textContent = '';
+      $('reviewBody').innerHTML = `<p class="muted">${t('s.previewReviewErr', rev.message)}</p>`;
+      setStatus('ok', t('s.previewReviewErr', rev.message));
+    }
+  } catch (e) { setStatus('err', t('s.previewFailed', e.message)); }
+};
+
+// ===== 第 1 步：处理文章（搬图、传封面、解析 frontmatter） =====
+$('prepareBtn').onclick = async () => {
+  if (!$('paste').innerText.trim()) return setStatus('err', t('s.pasteFirst'));
+  $('prepareBtn').disabled = true;
+  setStage(1, 'active');
+  setStatus('loading', t('s.prepLoading'));
+  try {
+    const body = { html: $('paste').innerHTML, overrides: overrides(), coverDataUrl };
+    if (editMode === 'edit' && existingCoverId && !coverDataUrl) body.existingCoverId = existingCoverId;
+    const vc = getVisionConfig(); if (vc) body.visionConfig = vc;
+    const r = await fetch(API + '/api/prepare', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const txt = await r.text();
+    let d; try { d = JSON.parse(txt); } catch { throw new Error('HTTP ' + r.status + ': ' + txt.slice(0,200)); }
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    prepared = d;
+    renderImagePanel(d.images || []);
+    const warn = d.failedImageCount ? '<br>' + t('s.prepWarn', d.failedImageCount) : '';
+    $('prepareResult').innerHTML = `<div class="urls">${t('s.prepResultDone')}<br>${t('s.prepImageCount', d.imageCount)}${warn}<br><span class="muted">${t('s.prepResultTitle')}: ${d.enFields.title}</span><br><b>${t('s.prepHintRow')}</b></div>`;
+    setStage(1, 'done');
+    $('translateBtn').disabled = false;
+    $('stripBtn').disabled = false;
+    setStatus('ok', t('s.prepDone'));
+  } catch (e) { setStatus('err', t('s.prepFailed', e.message)); }
+  finally { $('prepareBtn').disabled = false; }
+};
+
+// ===== 视觉模型设置（localStorage 持久化） =====
+const VM_KEY = 'visionConfig.v1';
+const VM_DEFAULTS = { base: 'https://api.atlascloud.ai/v1', model: 'qwen/qwen3-vl-30b-a3b-instruct', key: '' };
+function getVisionConfig() {
+  try {
+    const c = JSON.parse(localStorage.getItem(VM_KEY) || 'null');
+    if (!c || (!c.base && !c.key && !c.model)) return null; // 未设置 → 让后端用 .env 兜底
+    return { base: c.base || '', key: c.key || '', model: c.model || '' };
+  } catch { return null; }
+}
+function openVisionSettings() {
+  const cur = getVisionConfig() || VM_DEFAULTS;
+  $('vmBase').value = cur.base || VM_DEFAULTS.base;
+  $('vmKey').value = cur.key || '';
+  // 在 preset 列表里找模型；找不到就用自定义
+  const preset = $('vmPreset');
+  const opts = [...preset.options].map(o => o.value);
+  if (cur.model && opts.includes(cur.model)) {
+    preset.value = cur.model;
+    $('vmModel').value = '';
+    $('vmModel').style.display = 'none';
+  } else {
+    preset.value = '__custom__';
+    $('vmModel').value = cur.model || VM_DEFAULTS.model;
+    $('vmModel').style.display = '';
+  }
+  $('visionModal').style.display = 'flex';
+}
+$('visionSettingsBtn').onclick = openVisionSettings;
+$('vmPreset').onchange = () => {
+  const isCustom = $('vmPreset').value === '__custom__';
+  $('vmModel').style.display = isCustom ? '' : 'none';
+  if (!isCustom) $('vmModel').value = '';
+};
+$('vmCancel').onclick = () => { $('visionModal').style.display = 'none'; };
+$('vmSave').onclick = () => {
+  const presetVal = $('vmPreset').value;
+  const model = presetVal === '__custom__' ? $('vmModel').value.trim() : presetVal;
+  const cfg = { base: $('vmBase').value.trim(), model, key: $('vmKey').value.trim() };
+  if (!cfg.base || !cfg.model || !cfg.key) {
+    return setStatus('err', t('s.vmInvalid'));
+  }
+  localStorage.setItem(VM_KEY, JSON.stringify(cfg));
+  $('visionModal').style.display = 'none';
+  setStatus('ok', t('s.vmSaved', cfg.model));
+};
+// 点 modal 外面关闭
+$('visionModal').onclick = (e) => { if (e.target === $('visionModal')) $('visionModal').style.display = 'none'; };
+
+// ===== 审稿模型设置（同样存 localStorage）=====
+const RM_KEY = 'reviewConfig.v1';
+const RM_DEFAULTS = { base: 'https://api.atlascloud.ai/v1', model: 'deepseek-ai/deepseek-v4-pro', key: '' };
+function getReviewConfig() {
+  try {
+    const c = JSON.parse(localStorage.getItem(RM_KEY) || 'null');
+    if (!c || (!c.base && !c.key && !c.model)) return null;
+    return { base: c.base || '', key: c.key || '', model: c.model || '' };
+  } catch { return null; }
+}
+$('reviewSettingsBtn').onclick = () => {
+  const cur = getReviewConfig() || RM_DEFAULTS;
+  $('rmBase').value = cur.base || RM_DEFAULTS.base;
+  $('rmKey').value = cur.key || '';
+  const preset = $('rmPreset');
+  const opts = [...preset.options].map(o => o.value);
+  if (cur.model && opts.includes(cur.model)) {
+    preset.value = cur.model;
+    $('rmModel').value = '';
+    $('rmModel').style.display = 'none';
+  } else {
+    preset.value = '__custom__';
+    $('rmModel').value = cur.model || RM_DEFAULTS.model;
+    $('rmModel').style.display = '';
+  }
+  $('reviewModal').style.display = 'flex';
+};
+$('rmPreset').onchange = () => {
+  const isCustom = $('rmPreset').value === '__custom__';
+  $('rmModel').style.display = isCustom ? '' : 'none';
+  if (!isCustom) $('rmModel').value = '';
+};
+$('rmCancel').onclick = () => { $('reviewModal').style.display = 'none'; };
+$('rmSave').onclick = () => {
+  const presetVal = $('rmPreset').value;
+  const model = presetVal === '__custom__' ? $('rmModel').value.trim() : presetVal;
+  const cfg = { base: $('rmBase').value.trim(), model, key: $('rmKey').value.trim() };
+  if (!cfg.base || !cfg.model || !cfg.key) {
+    return setStatus('err', t('s.rmInvalid'));
+  }
+  localStorage.setItem(RM_KEY, JSON.stringify(cfg));
+  $('reviewModal').style.display = 'none';
+  setStatus('ok', t('s.rmSaved', cfg.model));
+};
+$('reviewModal').onclick = (e) => { if (e.target === $('reviewModal')) $('reviewModal').style.display = 'none'; };
+
+// ===== 渲染审稿结果 =====
+let reviewIssues = [];
+function renderReview(d) {
+  if (d.skipped) {
+    $('reviewStage').style.display = 'block';
+    $('reviewMeta').textContent = '';
+    $('reviewBody').innerHTML = `<p class="muted">${t('review.noConfig')}</p>`;
+    reviewIssues = [];
+    return;
+  }
+  reviewIssues = d.issues || [];
+  $('reviewStage').style.display = 'block';
+  $('reviewMeta').textContent = d.model ? `（${d.model}, ${reviewIssues.length} ${curLang==='en'?'issue(s)':'个问题'}）` : '';
+  if (!reviewIssues.length) {
+    $('reviewBody').innerHTML = `<p style="color:var(--success);font-weight:600">${t('review.noIssues')}</p>`;
+    return;
+  }
+  const rows = reviewIssues.map((it, i) => {
+    const loc = it.location || '?';
+    const fixable = it.original && it.fixed !== undefined && it.fixed !== null;
+    return `
+      <div style="padding:10px 0;border-bottom:1px dashed var(--border)">
+        <div style="font-weight:700;color:var(--ink)">#${i+1} · <span style="color:var(--accent)">${loc}</span> · ${it.description||it.type||''}</div>
+        ${it.original ? `<div style="margin-top:4px;font-size:12px"><span class="muted">${t('review.original')}</span><code>${escapeAttr(it.original).slice(0,200)}</code></div>` : ''}
+        ${fixable ? `<div style="margin-top:4px;font-size:12px"><span class="muted">${t('review.suggestion')}</span><code style="background:#e6f7ed;color:#0a7d34">${escapeAttr(it.fixed).slice(0,200)}</code></div>` : ''}
+      </div>`;
+  }).join('');
+  $('reviewBody').innerHTML = `${rows}<div style="margin-top:14px"><button id="applyFixesBtn">${t('review.applyBtn')}</button></div>`;
+  $('applyFixesBtn').onclick = applyAllFixes;
+}
+
+function applyAllFixes() {
+  if (!reviewIssues.length) return;
+  let changedFields = 0, changedContent = 0;
+  // 标题/描述/metaTitle/slug：直接替换表单值
+  for (const it of reviewIssues) {
+    if (!it.fixed && it.fixed !== '') continue;
+    const loc = it.location;
+    if (['title','description','metaTitle','slug'].includes(loc)) {
+      const el = $(loc);
+      if (!el) continue;
+      // 若 original 出现在当前值里就 replace，否则直接覆盖
+      if (it.original && el.value.includes(it.original)) {
+        el.value = el.value.split(it.original).join(it.fixed);
+      } else {
+        el.value = it.fixed;
+      }
+      changedFields++;
+    } else if (loc === 'content') {
+      // 正文：在粘贴区 innerHTML 上做文本替换
+      if (it.original) {
+        const before = $('paste').innerHTML;
+        const after = before.split(it.original).join(it.fixed || '');
+        if (after !== before) { $('paste').innerHTML = after; changedContent++; }
+      }
+    }
+  }
+  setStatus('ok', t('review.appliedMsg', changedFields, changedContent));
+  $('reviewStage').style.display = 'none';
+  reviewIssues = [];
+}
+
+// ===== 第 2 步：一键翻译 =====
+// ===== 清除错误格式（行内代码 / 指定超链接 / 块间空行规范） =====
+//   - 在本地 prepared 上做清理
+//   - 如果文章已 sync/load 过（有 documentId），自动 PUT 推回 Strapi，免去手动再点同步
+$('stripBtn').onclick = async () => {
+  if (!prepared) return setStatus('err', t('s.tFirstPrep'));
+  let totalInline = 0, totalAtlas = 0, langs = 0;
+  if (prepared.enFields) {
+    const c = countFormatIssues(prepared.enFields.content);
+    totalInline += c.inline; totalAtlas += c.atlas;
+    prepared.enFields.content = stripBadFormatting(prepared.enFields.content);
+  }
+  for (const loc of Object.keys(prepared.translations || {})) {
+    const c = countFormatIssues(prepared.translations[loc].content);
+    totalInline += c.inline; totalAtlas += c.atlas;
+    prepared.translations[loc].content = stripBadFormatting(prepared.translations[loc].content);
+    langs += 1;
+  }
+  const scope = langs ? t('s.stripScopeWithTr', langs) : t('s.stripScopeEnOnly');
+  const cleanParts = [];
+  if (totalInline) cleanParts.push(t('s.stripPartInline', totalInline));
+  if (totalAtlas) cleanParts.push(t('s.stripPartAtlas', totalAtlas));
+  cleanParts.push(t('s.stripPartSpacing'));
+  const cleanMsg = t('s.stripCleaned', scope, cleanParts.join('； '));
+
+  // 决定是否自动推回 Strapi
+  const targetDocId = editDocId || documentId; // 编辑模式的 load 出来的 / 新建模式 sync 出来的
+  if (!targetDocId) {
+    setStatus('ok', cleanMsg + t('s.stripPushHint'));
+    return;
+  }
+
+  $('stripBtn').disabled = true;
+  setStatus('loading', cleanMsg + t('s.stripPushing'));
+  try {
+    const r = await fetch(API + '/api/update', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        documentId: targetDocId,
+        enFields: prepared.enFields,
+        translations: prepared.translations || {},
+        imageWidths,
+      }),
+    });
+    const txt = await r.text();
+    let d; try { d = JSON.parse(txt); } catch { throw new Error('HTTP ' + r.status + ': ' + txt.slice(0,200)); }
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    const okLocs = (d.synced || []).filter(x => x.ok).map(x => x.locale).join(', ');
+    setStatus('ok', cleanMsg + t('s.stripPushed', okLocs));
+  } catch (e) {
+    setStatus('err', cleanMsg + t('s.stripPushFailed', e.message));
+  } finally {
+    $('stripBtn').disabled = false;
+  }
+};
+
+$('translateBtn').onclick = async () => {
+  if (!prepared) return setStatus('err', t('s.tFirstPrep'));
+  $('translateBtn').disabled = true;
+  setStage(2, 'active');
+  const locales = selectedLocales();
+  setStatus('loading', t('s.tLoading', locales.length));
+  try {
+    const r = await fetch(API + '/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enFields: prepared.enFields, locales, imageAlts }) });
+    const txt = await r.text();
+    let d; try { d = JSON.parse(txt); } catch { throw new Error('HTTP ' + r.status + ': ' + txt.slice(0,200)); }
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    if (d.enFields) prepared.enFields = d.enFields; // alt 已写入 content
+    prepared.translations = d.translations || {};
+    prepared.translatedLocales = d.translatedLocales || [];
+    prepared.failedTranslations = d.failedTranslations || [];
+    const okList = ['en', ...prepared.translatedLocales].map(l => `<span class="badge ok">${l}</span>`).join('');
+    const errList = prepared.failedTranslations.map(f => `<span class="badge err">${f.locale}（${f.error}）</span>`).join('');
+    $('translateResult').innerHTML = `<div class="urls">${t('s.tResultDone')}<br>${t('s.tResultReady')}${okList}${errList?'<br>'+t('s.tResultFailed')+errList:''}</div>`;
+    setStage(2, 'done');
+    $('syncBtn').disabled = false;
+    setStatus('ok', t('s.tDone'));
+  } catch (e) { setStatus('err', t('s.tFailed', e.message)); }
+  finally { $('translateBtn').disabled = false; }
+};
+
+// ===== 第 2 步：同步到 Strapi（草稿）=====
+$('syncBtn').onclick = async () => {
+  if (!prepared) return setStatus('err', t('s.syncFirstTranslate'));
+  if (editMode === 'edit' && !editDocId) return setStatus('err', t('s.syncEditFirstLoad'));
+  $('syncBtn').disabled = true;
+  setStage(2, 'active');
+  const verb = editMode === 'edit' ? t('s.syncOverwrite') : t('s.syncCreate');
+  setStatus('loading', t('s.syncLoading', verb));
+  try {
+    const url = editMode === 'edit' ? '/api/update' : '/api/sync';
+    const body = editMode === 'edit'
+      ? { documentId: editDocId, enFields: prepared.enFields, translations: prepared.translations, imageWidths }
+      : { enFields: prepared.enFields, translations: prepared.translations, imageWidths };
+    const r = await fetch(API + url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    documentId = d.documentId;
+    const items = d.synced.map(s => s.ok ? `<span class="badge ok">${s.locale}</span>` : `<span class="badge err">${s.locale}（${s.error}）</span>`).join('');
+    const adminUrl = 'https://strapi-admin.atlascloud.ai/admin/content-manager/collection-types/api::blog.blog/' + documentId;
+    $('syncResult').innerHTML = `<div class="urls">${t('s.syncResultCreated')}${items}<br><a href="${adminUrl}" target="_blank">${t('s.syncResultOpen')}</a></div>`;
+    setStage(2, 'done');
+    $('publishBtn').disabled = false;
+    setStatus('ok', t('s.syncDone'));
+  } catch (e) { setStatus('err', t('s.syncFailed', e.message)); }
+  finally { $('syncBtn').disabled = false; }
+};
+
+// ===== 第 3 步：一键发布 =====
+$('publishBtn').onclick = async () => {
+  if (!documentId) return setStatus('err', t('s.pubFirstSync'));
+  $('publishBtn').disabled = true;
+  setStage(3, 'active');
+  setStatus('loading', t('s.pubLoading'));
+  try {
+    const locales = ['en', ...Object.keys(prepared.translations)];
+    const body = { documentId, locales, categoryDocId: getCategoryDocId(), slug: prepared.enFields.slug };
+    const r = await fetch(API + '/api/publish-all', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    const lines = d.results.map(x => x.ok
+      ? `<a href="${x.url}" target="_blank">${x.locale} → ${x.url}</a>`
+      : `<span class="badge err">${x.locale}（${x.error}）</span>`
+    ).join('');
+    $('publishResult').innerHTML = `<div class="urls">${t('s.pubResultDone')}<br>${lines}</div>`;
+    setStage(3, 'done');
+    setStatus('ok', t('s.pubAllDone'));
+  } catch (e) { setStatus('err', t('s.pubFailed', e.message)); }
+  finally { $('publishBtn').disabled = false; }
+};
+</script>
+</body>
+</html>
