@@ -5,6 +5,8 @@
 
 Polypost replaces the tedious manual workflow of creating a blog post in Strapi (filling out 7+ fields, uploading each image, clicking "Translate with AI" 10 times, then clicking "Publish" 11 times) with a single 4-step web UI that finishes the entire pipeline in under 5 minutes.
 
+👋 **零基础第一次用？看这里：[手把手安装教程 →](./安装教程.md)**
+
 [中文用户文档 →](./用户文档.md)
 
 ---
