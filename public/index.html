@@ -167,6 +167,16 @@
   }
   .paste:empty:before { content: attr(data-ph); color: var(--muted); font-style: italic; }
   .paste img { max-width: 100%; border-radius: 8px; }
+  /* 让 <youtube>id</youtube> 自定义标签在编辑器里清晰可见 */
+  .paste youtube {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; margin: 2px 0;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1.5px solid var(--accent); border-radius: 999px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 600;
+    user-select: text;
+  }
+  .paste youtube::before { content: '▶ YouTube · '; opacity: .7; font-weight: 700; }
 
   /* ====== 语言徽章 ====== */
   .langs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

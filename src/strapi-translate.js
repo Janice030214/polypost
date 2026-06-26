@@ -110,12 +110,37 @@ async function parseStream(res) {
   return result;
 }
 
+// 保护不可翻译的内嵌标签（如 <youtube>VIDEO_ID</youtube>）：
+// 翻译前替换成不可读的占位符，翻译完再换回来——
+// 这样无论 LLM 怎么"理解"原文，标签里的 ID 都不会被改、被翻译、被删。
+function protectInlineTags(text) {
+  const tokens = [];
+  const replaced = String(text || '').replace(
+    /<youtube>\s*([^<\s]+?)\s*<\/youtube>/gi,
+    (_, id) => {
+      tokens.push(id);
+      // 占位符用一种 LLM 不会翻译的形态
+      return `​__YT${tokens.length - 1}__​`;
+    }
+  );
+  return { replaced, tokens };
+}
+function restoreInlineTags(text, tokens) {
+  if (!tokens.length) return text;
+  return String(text || '').replace(/​__YT(\d+)__​/g, (m, i) => {
+    const id = tokens[+i];
+    return id !== undefined ? `<youtube>${id}</youtube>` : m;
+  });
+}
+
 export async function translateFields(fields, targetLocale, onProgress = () => {}) {
   const name = LOCALES[targetLocale] || targetLocale;
+  // 把 <youtube>ID</youtube> 替换成占位符，确保翻译过程不动它
+  const contentProtected = protectInlineTags(fields.content);
   const source = {
     title: fields.title,
     description: fields.description,
-    content: fields.content,
+    content: contentProtected.replaced,
   };
   if (fields.metaTitle) source.metaTitle = fields.metaTitle;
 
@@ -142,11 +167,17 @@ export async function translateFields(fields, targetLocale, onProgress = () => {
   const translated = await withAdminAuthRetry(doCall);
   if (!Object.keys(translated).length) throw new Error('翻译返回为空');
 
+  // 翻译结果里把占位符换回 <youtube>ID</youtube>
+  const translatedContent = restoreInlineTags(
+    translated.content ?? fields.content,
+    contentProtected.tokens
+  );
+
   return {
     ...fields,
     title: translated.title ?? fields.title,
     description: translated.description ?? fields.description,
-    content: translated.content ?? fields.content,
+    content: translatedContent,
     metaTitle: translated.metaTitle ?? fields.metaTitle,
     locale: targetLocale,
   };
