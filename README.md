@@ -8,6 +8,8 @@ Polypost replaces the tedious manual workflow of creating a blog post in Strapi 
 
 👋 **零基础第一次用？看这里：[手把手安装教程 →](./安装教程.md)**
 
+💡 **装好之后，每次想用？双击项目里的「启动 Polypost.command」即可。**
+
 [中文用户文档 →](./用户文档.md)
 
 ---
