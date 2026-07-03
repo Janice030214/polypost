@@ -37,11 +37,18 @@ async function fetchImage(src) {
   return null;
 }
 
-// 把 youtube 的 iframe 预处理成纯文本标签，便于转 markdown
+// YouTube 占位符：用全局唯一标记串替代 <youtube>id</youtube>，后处理时每个占位符独立
+// 强制变回 `<youtube>id</youtube>` 并保证前后留空行——即使两个 YouTube 紧挨着或夹在段落里
+// 也能被正确分离成各自独立的块。
+const YT_OPEN = 'POLYYT';
+const YT_CLOSE = '/POLYYT';
+const YT_TOKEN_RE = /POLYYT([A-Za-z0-9_\-\\]+)\/POLYYT/g;
+
+// 把 youtube 的 iframe 预处理成 token
 function preprocessYoutubeIframes(html) {
   return html.replace(/<iframe\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*><\/iframe>/gi, (full, src) => {
     const id = youtubeId(src.replace(/^\/\//, 'https://'));
-    return id ? `<p>::youtube::${id}::</p>` : full;
+    return id ? `${YT_OPEN}${id}${YT_CLOSE}` : full;
   });
 }
 
@@ -55,23 +62,33 @@ function cleanLarkPlaceholders(html) {
 }
 
 // 编辑模式：粘贴区可能直接含有 <youtube>id</youtube>（marked 把 markdown 渲染后保留下来）
-// 把它们先转成占位符，避免 node-html-markdown 把它们当成未知标签丢掉
+// 转成同样的 YT token，避免 node-html-markdown 把它当成未知标签丢掉
 function preprocessYoutubeCustom(html) {
-  return html.replace(/<youtube>\s*([A-Za-z0-9_-]+)\s*<\/youtube>/gi, (_, id) => `<p>::youtube::${id}::</p>`);
+  return html.replace(/<youtube>\s*([A-Za-z0-9_-]+)\s*<\/youtube>/gi, (_, id) => `${YT_OPEN}${id}${YT_CLOSE}`);
 }
 
-// 把 markdown 里独占一行的 youtube 链接转成 <youtube> 标签
+// markdown 后处理：每个 YT token 强制变成独立块 <youtube>id</youtube>，前后留空行
 function postprocessYoutube(md) {
-  return md
-    .replace(/^\s*::youtube::([A-Za-z0-9_-]+)::\s*$/gim, '<youtube>$1</youtube>')
-    .replace(/^\s*\[[^\]]*\]\((https?:\/\/[^)]*(?:youtube\.com|youtu\.be)[^)]*)\)\s*$/gim, (full, url) => {
+  // 1) 每个 token 强制变成"前后空行的 youtube 块"
+  md = md.replace(YT_TOKEN_RE, (m, id) => `\n\n<youtube>${id.replace(/\\([_\-])/g, '$1')}</youtube>\n\n`);
+  // 2) 顺便把独占一行的 markdown YouTube 链接（[xxx](youtube.com/xxx) 或裸 URL）也转
+  md = md.replace(
+    /^\s*\[[^\]]*\]\((https?:\/\/[^)]*(?:youtube\.com|youtu\.be)[^)]*)\)\s*$/gim,
+    (full, url) => {
       const id = youtubeId(url);
-      return id ? `<youtube>${id}</youtube>` : full;
-    })
-    .replace(/^\s*(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/\S+)\s*$/gim, (full, url) => {
+      return id ? `\n\n<youtube>${id}</youtube>\n\n` : full;
+    }
+  );
+  md = md.replace(
+    /^\s*(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/\S+)\s*$/gim,
+    (full, url) => {
       const id = youtubeId(url);
-      return id ? `<youtube>${id}</youtube>` : full;
-    });
+      return id ? `\n\n<youtube>${id}</youtube>\n\n` : full;
+    }
+  );
+  // 3) 折叠多于 2 个的连续空行
+  md = md.replace(/\n{3,}/g, '\n\n');
+  return md;
 }
 
 // 主转换。uploadImage(buffer, mime, hintName) => {id, url} | null
