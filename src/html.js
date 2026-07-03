@@ -62,15 +62,45 @@ function cleanLarkPlaceholders(html) {
 }
 
 // 编辑模式：粘贴区可能直接含有 <youtube>id</youtube>（marked 把 markdown 渲染后保留下来）
-// 转成同样的 YT token，避免 node-html-markdown 把它当成未知标签丢掉
+// 转成同样的 YT token，避免 node-html-markdown 把它当成未知标签丢掉。
+// 必须兼容三种形态（线上事故教训）：
+//   1. 真实元素，可能带属性 / 内部被 contenteditable 塞了 <span>：<youtube style="…"><span>ID</span></youtube>
+//   2. 纯文本形态（从 Lark / Docs 复制时标签是文字）：&lt;youtube&gt;ID&lt;/youtube&gt;
+//      —— 不处理的话 node-html-markdown 会把 < 转义成 \<、ID 里的 _ 转义成 \_，后台就坏了
 function preprocessYoutubeCustom(html) {
-  return html.replace(/<youtube>\s*([A-Za-z0-9_-]+)\s*<\/youtube>/gi, (_, id) => `${YT_OPEN}${id}${YT_CLOSE}`);
+  const toToken = (full, inner) => {
+    const id = String(inner).replace(/<[^>]+>/g, '').replace(/&(?:nbsp|#160);/gi, ' ').trim();
+    return /^[A-Za-z0-9_-]{5,32}$/.test(id) ? `${YT_OPEN}${id}${YT_CLOSE}` : full;
+  };
+  return html
+    .replace(/<youtube\b[^>]*>([\s\S]*?)<\/youtube\s*>/gi, toToken)
+    .replace(/&lt;\s*youtube\s*&gt;([\s\S]*?)&lt;\s*\/\s*youtube\s*&gt;/gi, toToken);
+}
+
+// 修复 markdown 里被转义/损坏的 <youtube> 标签，统一成独立块的 <youtube>ID</youtube>：
+//   \<youtube>EiMyDbAFCHs\</youtube>   （node-html-markdown 把 < 转义了）
+//   <youtube>y1TGcPF\_uvs</youtube>    （ID 里的 _ 被转义了）
+//   &lt;youtube&gt;ID&lt;/youtube&gt;  （HTML 实体形态）
+// 围栏代码块内的内容不动。幂等：规范形态重写后不变。
+export function normalizeYoutubeTags(md) {
+  if (!md) return md;
+  const fix = (_, id) => `\n\n<youtube>${id.replace(/\\/g, '')}</youtube>\n\n`;
+  const segs = String(md).split(/(```[\s\S]*?```)/);
+  for (let i = 0; i < segs.length; i += 2) { // 偶数段在围栏外
+    segs[i] = segs[i]
+      .replace(/[ \t]*\\?<\s*youtube\s*\\?>\s*([A-Za-z0-9_\\-]{5,40}?)\s*\\?<\s*\/\s*youtube\s*\\?>[ \t]*/gi, fix)
+      .replace(/[ \t]*&lt;\s*youtube\s*&gt;\s*([A-Za-z0-9_\\-]{5,40}?)\s*&lt;\s*\/\s*youtube\s*&gt;[ \t]*/gi, fix)
+      .replace(/\n{3,}/g, '\n\n');
+  }
+  return segs.join('');
 }
 
 // markdown 后处理：每个 YT token 强制变成独立块 <youtube>id</youtube>，前后留空行
 function postprocessYoutube(md) {
   // 1) 每个 token 强制变成"前后空行的 youtube 块"
   md = md.replace(YT_TOKEN_RE, (m, id) => `\n\n<youtube>${id.replace(/\\([_\-])/g, '$1')}</youtube>\n\n`);
+  // 1b) 兜底：逃过 preprocess 的转义形态（\<youtube>… / ID 里的 \_）也修正
+  md = normalizeYoutubeTags(md);
   // 2) 顺便把独占一行的 markdown YouTube 链接（[xxx](youtube.com/xxx) 或裸 URL）也转
   md = md.replace(
     /^\s*\[[^\]]*\]\((https?:\/\/[^)]*(?:youtube\.com|youtu\.be)[^)]*)\)\s*$/gim,

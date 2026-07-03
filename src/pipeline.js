@@ -1,7 +1,7 @@
 // 编排：Lark 链接 / 粘贴 HTML -> Markdown -> 上传图片 -> 创建 Strapi 文章（+ 多语言）
 import { resolveDocumentId, fetchAllBlocks, downloadMedia } from './lark.js';
 import { blocksToMarkdown } from './convert.js';
-import { htmlToMarkdown } from './html.js';
+import { htmlToMarkdown, normalizeYoutubeTags } from './html.js';
 import { uploadFile, createBlog, createLocalization, publishLocale } from './strapi.js';
 import { translateFields, adminLogin, withAdminAuthRetry } from './strapi-translate.js';
 import { describeImages, isVisionEnabled } from './vision.js';
@@ -73,7 +73,7 @@ function stripHeadingLabel(text) {
   ).trim();
 }
 
-// 清理字段值：去首尾空白、去包裹的引号（中英文）、去 markdown 转义反斜杠
+// 清理字段值：去首尾空白、去包裹的引号（中英文）、去包裹的加粗、去 markdown 转义反斜杠
 function cleanValue(v) {
   if (v == null) return '';
   let s = String(v).trim();
@@ -83,6 +83,9 @@ function cleanValue(v) {
     if (!m) break;
     s = m[1].trim();
   }
+  // 剥掉包裹整个值的 **加粗** / __加粗__（值内部没有其他 * _ 时才剥，避免误伤）
+  const b = s.match(/^(\*{1,3}|_{2,3})([^*_]+)\1$/);
+  if (b) s = b[2].trim();
   return s.replace(/\\([_*`\-\[\]()])/g, '$1');
 }
 
@@ -105,12 +108,46 @@ function applyH1TitleRule(meta, body) {
 
 // 文章开头常带一段 frontmatter（meta_title / meta_description / title / slug…），
 // 解析出来对应到 Strapi 字段，并从正文里剔除（含分隔线 ---）
-const META_KEYS = {
+//
+// 统一的"标签 → Strapi 字段"映射。key 已规范化（小写、去空格/下划线/连字符）。
+// 值为 null 表示"认识这个标签，但直接丢弃（不进任何字段）"。
+const META_LOOKUP = {
   title: 'title',
-  meta_title: 'metaTitle', metatitle: 'metaTitle', 'meta-title': 'metaTitle', seotitle: 'metaTitle',
-  meta_description: 'description', metadescription: 'description', 'meta-description': 'description', description: 'description',
-  slug: 'slug', author: 'author', date: 'time', time: 'time',
+  metatitle: 'metaTitle', seotitle: 'metaTitle',
+  metadescription: 'description', description: 'description',
+  seodescription: 'description', metadesc: 'description',
+  slug: 'slug', urlslug: 'slug',
+  author: 'author',
+  date: 'time', time: 'time', publishdate: 'time', publisheddate: 'time',
+  keyword: null, keywords: null, tag: null, tags: null,
+  focuskeyword: null, metakeyword: null, metakeywords: null,
+  primarykeyword: null, targetkeyword: null, secondarykeyword: null, secondarykeywords: null,
+  coveryoutubeid: 'coverYoutubeId',
 };
+
+// 把行首的 **Label:** value / **Label**: value / __Label__: value 解开成 Label: value
+// （文章工具导出的元数据标签经常是加粗的，见线上事故：**Meta Title:** …）
+function unwrapLabelEmphasis(t) {
+  const m = t.match(/^(\*{1,3}|_{2,3})([^*_][\s\S]*?)\1\s*([:：]?)\s*(.*)$/);
+  if (!m) return t;
+  const inner = m[2].trim();
+  if (/[:：]$/.test(inner)) return inner.replace(/\s*[:：]$/, '') + ': ' + m[4]; // **Label:** value
+  if (m[3]) return inner + ': ' + m[4];                                          // **Label**: value
+  return t; // 加粗但不是"标签: 值"形态，原样返回
+}
+
+// 识别"标签行"：支持加粗包裹、最多 4 个单词的多词标签（如 "Meta Title" / "Focus Keyword"）。
+// 返回 { key（规范化）, value, multiWord } 或 null。
+function matchMetaLabel(line) {
+  const t = unwrapLabelEmphasis(String(line).trim().replace(/\\([_*`\-\[\]()])/g, '$1'));
+  const m = t.match(/^([A-Za-z][A-Za-z0-9_-]*(?:[ \t]+[A-Za-z0-9_-]+){0,3})\s*[:：]\s*(.+)$/);
+  if (!m) return null;
+  return {
+    key: m[1].toLowerCase().replace(/[\s_-]+/g, ''),
+    value: m[2],
+    multiWord: /[ \t]/.test(m[1].trim()),
+  };
+}
 
 function parseFrontmatter(md) {
   const meta = {};
@@ -121,19 +158,20 @@ function parseFrontmatter(md) {
     const t = lines[i].trim();
     if (t === '') { i++; continue; }
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) { i++; continue; }
-    const norm = t.replace(/\\([_*`\-\[\]()])/g, '$1');
-    // 任何 key: value 行都视作 frontmatter（中英文冒号皆可；未知键直接丢弃）
-    const m = norm.match(/^([A-Za-z][\w-]*)\s*[:：]\s*(.+)$/);
-    if (m) {
-      const key = m[1].toLowerCase();
-      const field = META_KEYS[key];
-      if (field) {
-        const v = cleanValue(m[2]);
-        if (!meta[field] && v) meta[field] = v;
+    const lab = matchMetaLabel(t);
+    if (lab) {
+      const field = META_LOOKUP[lab.key];
+      // 已知键（含要丢弃的 keyword 系）一律消费；未知键沿旧行为只消费单词键，
+      // 多词未知键（如 "Quick take: …"）当正文，停止 frontmatter 解析
+      if (field !== undefined || !lab.multiWord) {
+        if (field) {
+          const v = cleanValue(lab.value);
+          if (!meta[field] && v) meta[field] = v;
+        }
+        consumed = true;
+        i++;
+        continue;
       }
-      consumed = true;
-      i++;
-      continue;
     }
     break;
   }
@@ -149,36 +187,32 @@ function parseFrontmatter(md) {
 //   Slug: ...            → slug
 //   Keyword(s) / Tags    → 直接丢弃（不进 strapi 字段，但从正文删掉）
 // 提取后从 body 删除这些行，避免出现在正文里。
+// 正文中间的 Author:/Date: 多半是文章内容（署名、引用），不当元数据抽走
+const INLINE_SKIP_FIELDS = new Set(['author', 'time']);
+
 function extractInlineMeta(body, { hasH1 } = {}) {
   const lines = body.split('\n');
   const out = [];
   const meta = {};
-  const KNOWN = {
-    title: 'title', metatitle: 'metaTitle', meta_title: 'metaTitle', 'meta-title': 'metaTitle',
-    seotitle: 'metaTitle', seo_title: 'metaTitle',
-    description: 'description', metadescription: 'description',
-    meta_description: 'description', 'meta-description': 'description', seodescription: 'description',
-    slug: 'slug',
-    keyword: null, keywords: null, tags: null, focus_keyword: null,
-    coveryoutubeid: 'coverYoutubeId', 'cover-youtube-id': 'coverYoutubeId',
-  };
+  let inFence = false;
   for (const line of lines) {
     const t = line.trim();
-    if (!t) { out.push(line); continue; }
-    // 跳过真正的正文内容：heading / list / quote / code / image / 数字列表
-    if (/^[#>\-*+`]/.test(t) || /^\d+\.\s/.test(t) || /^!\[/.test(t)) {
+    if (/^```/.test(t)) { inFence = !inFence; out.push(line); continue; }
+    if (inFence || !t) { out.push(line); continue; }
+    // 跳过真正的正文结构行：heading / quote / code / 列表 / 图片 / HTML 标签
+    // 注意：列表匹配 "- " "* " "+ "（标记+空格），**加粗** 不是列表，要继续走标签识别
+    if (/^(#|>|`|[-*+]\s|\d+\.\s|!\[|<)/.test(t)) {
       out.push(line); continue;
     }
-    const norm = t.replace(/\\([_*`\-\[\]()])/g, '$1');
-    const m = norm.match(/^([A-Za-z][\w-]*)\s*[:：]\s*(.+)$/);
-    if (m) {
-      const key = m[1].toLowerCase();
-      let field = KNOWN[key];
+    const lab = matchMetaLabel(t);
+    if (lab) {
+      let field = META_LOOKUP[lab.key];
+      if (field && INLINE_SKIP_FIELDS.has(field)) field = undefined;
       // user 规则：有 H1 时，body 里的 "title:" 视为 metaTitle
-      if (key === 'title' && hasH1) field = 'metaTitle';
+      if (lab.key === 'title' && hasH1) field = 'metaTitle';
       if (field !== undefined) {
         if (field && !meta[field]) {
-          const v = cleanValue(m[2]);
+          const v = cleanValue(lab.value);
           if (v) meta[field] = v;
         }
         continue; // 删掉这一行
@@ -278,7 +312,7 @@ export async function loadBlog(ref) {
           author: j.data.author || 'Atlas Cloud',
           time: j.data.time || '',
           slug: j.data.slug || '',
-          content: j.data.content || '',
+          content: normalizeYoutubeTags(j.data.content || ''),
           locale: loc,
           ...(j.data.metaTitle ? { metaTitle: j.data.metaTitle } : {}),
           ...(j.data.coverYoutubeId ? { coverYoutubeId: j.data.coverYoutubeId } : {}),
@@ -287,6 +321,7 @@ export async function loadBlog(ref) {
     } catch { /* 个别语种失败不影响整体 */ }
   }));
 
+  const enContent = normalizeYoutubeTags(d.content || '');
   return {
     documentId: d.documentId,
     title: d.title || '',
@@ -296,14 +331,14 @@ export async function loadBlog(ref) {
     slug: d.slug || '',
     metaTitle: d.metaTitle || '',
     coverYoutubeId: d.coverYoutubeId || '',
-    content: d.content || '',
+    content: enContent,
     categoryDocId: d.category?.documentId || null,
     categoryName: d.category?.name || null,
     coverId: d.cover?.id || null,
     coverUrl: d.cover?.url || null,
     existingLocales,
     publishedAt: d.publishedAt,
-    images: extractImages(d.content || ''),
+    images: extractImages(enContent),
     translations, // 每个语种完整字段；前端会写入 prepared.translations
   };
 }
@@ -558,7 +593,8 @@ export async function prepare({
 export async function translateOnly({ enFields, locales = [], imageAlts = {} } = {}, onProgress = noop) {
   if (!enFields) throw new Error('缺少 enFields；请先点「① 处理文章」');
   // 把用户编辑过的 alt 写回 en content（再送翻译，所有语种 alt 都会被翻译）
-  const enWithAlts = { ...enFields, content: applyImageAlts(enFields.content, imageAlts) };
+  // youtube 标签先规范化，确保翻译时的占位符保护能匹配到
+  const enWithAlts = { ...enFields, content: applyImageAlts(normalizeYoutubeTags(enFields.content), imageAlts) };
   const targets = (locales || []).filter((l) => l && l !== 'en' && URL_LOCALE_PREFIX[l] !== undefined);
   onProgress(`并行翻译 ${targets.length} 种语言…`);
   const results = await Promise.allSettled(
@@ -667,11 +703,12 @@ export async function prepareAndTranslate({
 }
 
 // 按 imageWidths 把每张图的 {width=…} 重新刷一遍（en + 所有翻译）
+// 顺带把 youtube 标签规范化——这是写入 Strapi 前的最后关卡，绝不能让 \<youtube> 落库
 function applyImageWidths(enFields, translations, imageWidths = {}) {
-  const en = { ...enFields, content: withImageWidth(enFields.content, imageWidths) };
+  const en = { ...enFields, content: withImageWidth(normalizeYoutubeTags(enFields.content), imageWidths) };
   const out = {};
   for (const [loc, f] of Object.entries(translations)) {
-    out[loc] = { ...f, content: withImageWidth(f.content, imageWidths) };
+    out[loc] = { ...f, content: withImageWidth(normalizeYoutubeTags(f.content), imageWidths) };
   }
   return { enFields: en, translations: out };
 }

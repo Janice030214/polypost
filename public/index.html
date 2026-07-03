@@ -720,7 +720,8 @@ function escapeAttr(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"
 //   - [text](https://api.atlascloud.ai/v1...) → text
 //   - H3 紧贴上文（去掉之前的空行）
 //   - H2 前面留空行
-//   - <youtube>...</youtube> 前后都留空行
+//   - <youtube>...</youtube> 前后各补一个   空段落（CKEditor / 官网显示为可见空行；
+//     两个 youtube 之间只留一个空段落，不重复堆积）
 //   - 图片前后紧贴文字；两张图片之间留空行
 function stripBadFormatting(md) {
   if (!md) return md;
@@ -728,6 +729,20 @@ function stripBadFormatting(md) {
   md = md.replace(/\[([^\]]+)\]\(https?:\/\/api\.atlascloud\.ai[^)]*\)/gi, '$1');
   // 也去掉 markdown 自动链接 <https://api.atlascloud.ai...>
   md = md.replace(/<(https?:\/\/api\.atlascloud\.ai[^>]*)>/gi, '$1');
+
+  // 1.5) 每个 <youtube> 引用强制拆成独立块：
+  //      两个标签挤在同一行 / 和文字同行 / 被转义（\<youtube>、ID 里 \_）都拆开并规范化，
+  //      前后各留一个空行（具体空行由下面的 block 逻辑统一保证）。围栏代码块内不动。
+  {
+    const segs = md.split(/(```[\s\S]*?```)/);
+    for (let i = 0; i < segs.length; i += 2) {
+      segs[i] = segs[i].replace(
+        /[ \t]*\\?<\s*youtube\s*\\?>\s*([A-Za-z0-9_\\-]{5,40}?)\s*\\?<\s*\/\s*youtube\s*\\?>[ \t]*/gi,
+        (m, id) => '\n\n<youtube>' + id.replace(/\\/g, '') + '</youtube>\n\n'
+      );
+    }
+    md = segs.join('');
+  }
 
   // 2) 切分为 block：围栏→fence；连续 | 起始行→table；其他单行依类型；空白单独成 token
   const lines = md.split('\n');
@@ -764,18 +779,36 @@ function stripBadFormatting(md) {
   flushTable();
 
   // 3) 合并连续 blank，记录"原本是否有空行"
-  const blocks = [];
+  const rawBlocks = [];
   let pendingBlank = false;
   for (const item of items) {
     if (item.kind === 'blank') { pendingBlank = true; continue; }
-    blocks.push({ ...item, hadBlankBefore: pendingBlank });
+    rawBlocks.push({ ...item, hadBlankBefore: pendingBlank });
     pendingBlank = false;
+  }
+
+  // 3.5) youtube 块前后各补一个   空段落（可见空行）。
+  //      注意：旧的   空段落行 trim() 后为空，已在上面被当 blank 吞掉，
+  //      这里统一重建——youtube 前后必有且只有一个；两个 youtube 之间也只有一个。
+  const blocks = [];
+  for (const b of rawBlocks) {
+    if (b.kind === 'youtube') {
+      if (!blocks.length || blocks[blocks.length - 1].kind !== 'spacer') {
+        blocks.push({ kind: 'spacer', content: '\u00a0' });
+      }
+      blocks.push(b);
+      blocks.push({ kind: 'spacer', content: '\u00a0' });
+    } else {
+      blocks.push(b);
+    }
   }
 
   // 4) 决定相邻 block 之间是否要空行
   function wantBlankBetween(prev, curr) {
     if (!prev) return false;
     if (prev.kind === 'fence' || curr.kind === 'fence') return true;
+    // spacer（  空段落）必须独立成段：前后都要空行，否则会被并进相邻段落
+    if (prev.kind === 'spacer' || curr.kind === 'spacer') return true;
     // 高优先级：H2 前空一行；youtube 前后都空（无论邻居是谁）
     if (curr.kind === 'h2') return true;
     if (curr.kind === 'youtube' || prev.kind === 'youtube') return true;
@@ -1256,11 +1289,16 @@ function applyAllFixes() {
       }
       changedFields++;
     } else if (loc === 'content') {
-      // 正文：在粘贴区 innerHTML 上做文本替换
+      // 正文：在粘贴区 innerHTML 上做文本替换。
+      // original 是 markdown 文本，DOM 里 < > & 是转义形态（&lt; 等），两种都试
       if (it.original) {
-        const before = $('paste').innerHTML;
-        const after = before.split(it.original).join(it.fixed || '');
-        if (after !== before) { $('paste').innerHTML = after; changedContent++; }
+        const escText = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const candidates = [it.original, escText(it.original)];
+        for (const needle of candidates) {
+          const before = $('paste').innerHTML;
+          const after = before.split(needle).join(it.fixed || '');
+          if (after !== before) { $('paste').innerHTML = after; changedContent++; break; }
+        }
       }
     }
   }
