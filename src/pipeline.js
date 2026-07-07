@@ -136,11 +136,12 @@ function unwrapLabelEmphasis(t) {
   return t; // 加粗但不是"标签: 值"形态，原样返回
 }
 
-// 识别"标签行"：支持加粗包裹、最多 4 个单词的多词标签（如 "Meta Title" / "Focus Keyword"）。
+// 识别"标签行"：支持加粗包裹、最多 4 个单词的多词标签（如 "Meta Title" / "Focus Keyword"），
+// 以及括号后缀（如 "Title (H1)" / "Description (SEO)"——括号部分直接忽略）。
 // 返回 { key（规范化）, value, multiWord } 或 null。
 function matchMetaLabel(line) {
   const t = unwrapLabelEmphasis(String(line).trim().replace(/\\([_*`\-\[\]()])/g, '$1'));
-  const m = t.match(/^([A-Za-z][A-Za-z0-9_-]*(?:[ \t]+[A-Za-z0-9_-]+){0,3})\s*[:：]\s*(.+)$/);
+  const m = t.match(/^([A-Za-z][A-Za-z0-9_-]*(?:[ \t]+[A-Za-z0-9_-]+){0,3})\s*(?:\([^()]{0,20}\))?\s*[:：]\s*(.+)$/);
   if (!m) return null;
   return {
     key: m[1].toLowerCase().replace(/[\s_-]+/g, ''),
@@ -223,15 +224,14 @@ function extractInlineMeta(body, { hasH1 } = {}) {
   return { meta, body: out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n' };
 }
 
-// 正文若以 h1 开头且其文本（去掉 "H1:" 等标签后）等于 title，则去掉那一行
-function stripLeadingH1(md, title) {
-  if (!md || !title) return md;
-  const norm = (s) => stripHeadingLabel(String(s).replace(/[*_`]/g, '')).trim().toLowerCase();
+// 正文若以 H1 开头，无条件去掉那一行——标题由 title 字段承载，
+// 正文必须直接从段落开始（此前只在 H1===title 时才删，导致用户覆盖标题后 H1 残留）
+function stripLeadingH1(md, _title) {
+  if (!md) return md;
   const lines = md.split('\n');
   let i = 0;
   while (i < lines.length && lines[i].trim() === '') i++;
-  const m = lines[i]?.match(/^#\s+(.+)$/);
-  if (m && norm(m[1]) === norm(title)) {
+  if (/^#\s+/.test(lines[i] || '')) {
     return lines.slice(i + 1).join('\n').replace(/^\s+/, '');
   }
   return md;

@@ -423,11 +423,10 @@
       <input id="vmBase" placeholder="https://api.atlascloud.ai/v1" />
       <label data-i18n="modal.modelLabel">模型</label>
       <select id="vmPreset" style="margin-bottom:6px">
-        <option value="qwen/qwen3-vl-30b-a3b-instruct" data-i18n="vmModel.opt1">qwen/qwen3-vl-30b-a3b-instruct（推荐，快）</option>
-        <option value="qwen/qwen3-vl-235b-a22b-instruct" data-i18n="vmModel.opt2">qwen/qwen3-vl-235b-a22b-instruct（大模型）</option>
-        <option value="qwen/qwen3-vl-8b-instruct" data-i18n="vmModel.opt3">qwen/qwen3-vl-8b-instruct（最快）</option>
-        <option value="zai-org/glm-5v-turbo">zai-org/glm-5v-turbo</option>
-        <option value="moonshotai/kimi-k2.6" data-i18n="vmModel.opt5">moonshotai/kimi-k2.6（慢）</option>
+        <option value="google/gemini-3.5-flash" data-i18n="vmModel.opt1">google/gemini-3.5-flash（推荐，快）</option>
+        <option value="qwen/qwen3-vl-235b-a22b-thinking" data-i18n="vmModel.opt2">qwen/qwen3-vl-235b-a22b-thinking（质量好，慢）</option>
+        <option value="bytedance/doubao-seed-2.0-mini-260428" data-i18n="vmModel.opt3">bytedance/doubao-seed-2.0-mini（较慢）</option>
+        <option value="moonshotai/kimi-k2.6" data-i18n="vmModel.opt5">moonshotai/kimi-k2.6（很慢）</option>
         <option value="__custom__" data-i18n="modal.customOpt">自定义…</option>
       </select>
       <input id="vmModel" placeholder="自定义时填模型名" data-i18n-attr="placeholder" data-i18n="modal.customModelPh" />
@@ -452,9 +451,8 @@
         <option value="deepseek-ai/deepseek-v4-flash" data-i18n="rmModel.opt2">deepseek-ai/deepseek-v4-flash（快）</option>
         <option value="deepseek-ai/DeepSeek-V3.2-Exp">deepseek-ai/DeepSeek-V3.2-Exp</option>
         <option value="qwen/qwen3.6-plus" data-i18n="rmModel.opt4">qwen/qwen3.6-plus（大）</option>
-        <option value="Qwen/Qwen3-Next-80B-A3B-Instruct" data-i18n="rmModel.opt5">Qwen3-Next-80B-A3B-Instruct（快）</option>
         <option value="zai-org/glm-4.7">zai-org/glm-4.7</option>
-        <option value="moonshotai/Kimi-K2-Instruct-0905">moonshotai/Kimi-K2-Instruct-0905</option>
+        <option value="moonshotai/kimi-k2.6">moonshotai/kimi-k2.6</option>
         <option value="__custom__">自定义…</option>
       </select>
       <input id="rmModel" placeholder="自定义时填模型名" data-i18n-attr="placeholder" data-i18n="modal.customModelPh" />
@@ -580,14 +578,13 @@ const I18N = {
   'vmModal.subtitle':      { zh: '（处理文章时给图片自动生成 alt）', en: '(Auto-generate alt text for images during processing)' },
   'rmModal.title':         { zh: '⚙️ 审稿模型设置', en: '⚙️ Review model settings' },
   'rmModal.subtitle':      { zh: '（点"预览"时检查格式问题）', en: '(Check format issues when "Preview" is clicked)' },
-  'vmModel.opt1':          { zh: 'qwen/qwen3-vl-30b-a3b-instruct（推荐，快）', en: 'qwen/qwen3-vl-30b-a3b-instruct (recommended, fast)' },
-  'vmModel.opt2':          { zh: 'qwen/qwen3-vl-235b-a22b-instruct（大模型）', en: 'qwen/qwen3-vl-235b-a22b-instruct (large)' },
-  'vmModel.opt3':          { zh: 'qwen/qwen3-vl-8b-instruct（最快）', en: 'qwen/qwen3-vl-8b-instruct (fastest)' },
-  'vmModel.opt5':          { zh: 'moonshotai/kimi-k2.6（慢）', en: 'moonshotai/kimi-k2.6 (slow)' },
+  'vmModel.opt1':          { zh: 'google/gemini-3.5-flash（推荐，快）', en: 'google/gemini-3.5-flash (recommended, fast)' },
+  'vmModel.opt2':          { zh: 'qwen/qwen3-vl-235b-a22b-thinking（质量好，慢）', en: 'qwen/qwen3-vl-235b-a22b-thinking (high quality, slow)' },
+  'vmModel.opt3':          { zh: 'bytedance/doubao-seed-2.0-mini（较慢）', en: 'bytedance/doubao-seed-2.0-mini (slower)' },
+  'vmModel.opt5':          { zh: 'moonshotai/kimi-k2.6（很慢）', en: 'moonshotai/kimi-k2.6 (very slow)' },
   'rmModel.opt1':          { zh: 'deepseek-ai/deepseek-v4-pro（推荐，长上下文）', en: 'deepseek-ai/deepseek-v4-pro (recommended, long context)' },
   'rmModel.opt2':          { zh: 'deepseek-ai/deepseek-v4-flash（快）', en: 'deepseek-ai/deepseek-v4-flash (fast)' },
   'rmModel.opt4':          { zh: 'qwen/qwen3.6-plus（大）', en: 'qwen/qwen3.6-plus (large)' },
-  'rmModel.opt5':          { zh: 'Qwen3-Next-80B-A3B-Instruct（快）', en: 'Qwen3-Next-80B-A3B-Instruct (fast)' },
 
   // 预览卡片
   'previewCard.title':     { zh: 'Markdown 预览', en: 'Markdown preview' },
@@ -774,6 +771,9 @@ function stripBadFormatting(md) {
     else if (/^# (?!#)/.test(t)) kind = 'h1';
     // 水平分隔线 (--- *** ___)：必须前后留空行，否则跟在段落后会被解析为 setext H2
     else if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(t)) kind = 'hr';
+    // 列表项 / 引用行：同类相邻要紧贴（分开会把一个列表/引用拆碎）
+    else if (/^(?:[-*+]\s|\d+\.\s)/.test(t)) kind = 'list';
+    else if (/^>/.test(t)) kind = 'quote';
     items.push({ kind, content: cleaned });
   }
   flushTable();
@@ -821,8 +821,14 @@ function stripBadFormatting(md) {
     if (prev.kind === 'hr' || curr.kind === 'hr') return true;
     // H3 紧贴上文
     if (curr.kind === 'h3') return false;
-    // 兜底：正文 / H1 等普通块之间默认不空行（删除莫名空白）
-    return false;
+    // 标题下一行可紧贴（ATX 标题自终结，渲染不受影响，版面更紧凑）
+    if (prev.kind === 'h1' || prev.kind === 'h2' || prev.kind === 'h3') return false;
+    // 列表项之间、引用行之间紧贴（加空行会把一个列表拆成多个松散列表）
+    if (prev.kind === 'list' && curr.kind === 'list') return false;
+    if (prev.kind === 'quote' && curr.kind === 'quote') return false;
+    // 兜底：普通段落之间必须空一行！！markdown 里两行紧贴会被并成同一段——
+    // 旧规则"默认不空行"就是线上段落全部粘连、**Key takeaways** 被吸进上一段的元凶
+    return true;
   }
 
   const out = [];
@@ -1147,11 +1153,17 @@ $('prepareBtn').onclick = async () => {
 
 // ===== 视觉模型设置（localStorage 持久化） =====
 const VM_KEY = 'visionConfig.v1';
-const VM_DEFAULTS = { base: 'https://api.atlascloud.ai/v1', model: 'qwen/qwen3-vl-30b-a3b-instruct', key: '' };
+const VM_DEFAULTS = { base: 'https://api.atlascloud.ai/v1', model: 'google/gemini-3.5-flash', key: '' };
+// 平台上已下线的模型：本地存的旧配置若还指向它们，直接忽略（回退到 .env 的可用默认）
+const DEAD_MODELS = [
+  'qwen/qwen3-vl-30b-a3b-instruct', 'qwen/qwen3-vl-235b-a22b-instruct', 'qwen/qwen3-vl-8b-instruct',
+  'Qwen/Qwen3-Next-80B-A3B-Instruct', 'moonshotai/Kimi-K2-Instruct-0905',
+];
 function getVisionConfig() {
   try {
     const c = JSON.parse(localStorage.getItem(VM_KEY) || 'null');
     if (!c || (!c.base && !c.key && !c.model)) return null; // 未设置 → 让后端用 .env 兜底
+    if (DEAD_MODELS.includes(c.model)) return null;         // 过期模型 → 同样回退 .env
     return { base: c.base || '', key: c.key || '', model: c.model || '' };
   } catch { return null; }
 }
@@ -1201,6 +1213,7 @@ function getReviewConfig() {
   try {
     const c = JSON.parse(localStorage.getItem(RM_KEY) || 'null');
     if (!c || (!c.base && !c.key && !c.model)) return null;
+    if (DEAD_MODELS.includes(c.model)) return null; // 过期模型 → 回退 .env
     return { base: c.base || '', key: c.key || '', model: c.model || '' };
   } catch { return null; }
 }
