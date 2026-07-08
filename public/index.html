@@ -368,6 +368,13 @@
       </div>
     </div>
 
+    <div class="stage" id="reviewStep">
+      <div class="stage-title"><span data-i18n="review.stepTitle">🔍 文章审阅（建议先做）</span> <span class="muted" id="reviewMeta" style="font-weight:400;font-size:12px"></span></div>
+      <p class="muted" data-i18n="review.stepDesc">检查标题/正文里的残留标签、H1、格式问题和明显拼写错误。每处问题单独确认后再修改。新建、编辑模式都可用。</p>
+      <button id="reviewBtn" class="secondary" data-i18n="review.reviewBtn">🔍 文章审阅</button>
+      <div id="reviewBody" style="margin-top:12px"></div>
+    </div>
+
     <div class="stage" id="stage1">
       <div class="stage-title" data-i18n="step1.title">第 1 步：处理文章</div>
       <p class="muted" data-i18n="step1.desc">解析 HTML、把正文图片搬到 Strapi CDN、上传封面、解析 frontmatter。完成后下方「正文图片宽度」会出现每张图的预览和宽度选择。</p>
@@ -378,11 +385,6 @@
     <div class="stage" id="imageStage">
       <div class="stage-title"><span data-i18n="imageStage.title">正文图片宽度</span> <span class="muted" style="font-weight:400" data-i18n="imageStage.subtitle">（默认 64%。每张图可单独调，应用到所有语言）</span></div>
       <div id="imageList"><p class="muted" data-i18n="imageStage.hint">点上面「处理文章」之后，每张正文图会在这里出现，可单独选 64% / 80% / 100% 或自定义宽度。</p></div>
-    </div>
-
-    <div class="stage" id="reviewStage" style="display:none">
-      <div class="stage-title"><span data-i18n="review.title">🔍 AI 审稿结果</span> <span class="muted" id="reviewMeta" style="font-weight:400;font-size:12px"></span></div>
-      <div id="reviewBody"></div>
     </div>
 
     <div class="stage" id="stage2">
@@ -554,12 +556,19 @@ const I18N = {
 
   // 审稿
   'review.title':          { zh: '🔍 AI 审稿结果', en: '🔍 AI Review' },
+  'review.stepTitle':      { zh: '🔍 文章审阅（建议先做）', en: '🔍 Article review (do this first)' },
+  'review.stepDesc':       { zh: '检查标题/正文里的残留标签、H1、格式问题和明显拼写错误。每处问题单独确认后再修改。新建、编辑模式都可用。', en: 'Checks leftover labels, H1s, format issues and obvious typos in the title/body. Approve each fix one at a time. Works in both New and Edit modes.' },
+  'review.reviewBtn':      { zh: '🔍 文章审阅', en: '🔍 Review article' },
   'review.noConfig':       { zh: '未配置审稿模型，跳过 AI 审稿。点右上 ⚙️ 审稿模型设置 即可开启。', en: 'Review model not configured. Click ⚙️ Review model in the top-right to enable.' },
   'review.noIssues':       { zh: '✅ 没发现明显的格式问题。', en: '✅ No obvious format issues found.' },
-  'review.applyBtn':       { zh: '✨ 一键修改', en: '✨ Apply all fixes' },
   'review.original':       { zh: '原文：', en: 'Original: ' },
   'review.suggestion':     { zh: '建议：', en: 'Suggestion: ' },
-  'review.appliedMsg':     { zh: '✨ 已应用 {0} 个字段修改 + {1} 个正文修改。请重新点「处理文章」让改动生效。', en: '✨ Applied {0} field fix(es) + {1} body fix(es). Click "Process article" again to apply.' },
+  'review.deleteLine':     { zh: '（删除整行）', en: '(delete whole line)' },
+  'review.applyOne':       { zh: '✓ 同意修改', en: '✓ Approve fix' },
+  'review.applied':        { zh: '✓ 已修改', en: '✓ Fixed' },
+  'review.appliedOne':     { zh: '✓ 已修改这一处。全部改完后点「处理文章」让改动生效。', en: '✓ Fixed. After approving all, click "Process article" to apply.' },
+  'review.notFound':       { zh: '未命中', en: 'Not found' },
+  'review.notFoundMsg':    { zh: '这一处在当前内容里没匹配到（可能已被改过），跳过。', en: 'This snippet was not found in the current content (maybe already changed). Skipped.' },
   'review.failed':         { zh: 'AI 审稿调用失败：{0}', en: 'AI review failed: {0}' },
 
   // 清除错误格式 stage
@@ -645,9 +654,10 @@ const I18N = {
   's.pubResultDone':       { zh: '✅ 已发布。官网链接：', en: '✅ Published. Site URLs:' },
   's.previewMeta':         { zh: '标题：{0} ｜ slug：{1} ｜ 正文图片 {2} 张', en: 'Title: {0} | slug: {1} | {2} body image(s)' },
   's.previewMetaWarn':     { zh: ' ｜ ⚠️ {0} 张图抓不到', en: ' | ⚠️ {0} image(s) unreachable' },
-  's.previewDone':         { zh: '预览完成。AI 审稿进行中…', en: 'Preview done. AI review in progress…' },
-  's.previewWithReviewOk': { zh: '✅ 预览完成 + AI 审稿：未发现明显格式问题。', en: '✅ Preview done + AI review: no obvious format issues.' },
-  's.previewWithReviewN':  { zh: '✅ 预览完成 + AI 审稿：发现 {0} 个问题，请到下方"AI 审稿结果"查看并按需点「一键修改」。', en: '✅ Preview done + AI review: {0} issue(s) found. See "AI Review" below and click "Apply all fixes" if needed.' },
+  's.previewDone':         { zh: '预览完成。', en: 'Preview done.' },
+  's.reviewLoading':       { zh: '🔍 AI 审阅中（检查格式、标签、拼写…）…', en: '🔍 AI reviewing (format, labels, spelling)…' },
+  's.previewWithReviewOk': { zh: '✅ AI 审阅：未发现明显问题。', en: '✅ AI review: no obvious issues found.' },
+  's.previewWithReviewN':  { zh: '✅ AI 审阅：发现 {0} 个问题，请在下方逐条查看，点「同意修改」逐处确认。', en: '✅ AI review: {0} issue(s) found. Review each below and click "Approve fix" one by one.' },
   's.previewWithReviewSkip': { zh: '预览完成（未配置审稿模型，跳过 AI 审稿）。', en: 'Preview done (review model not configured, skipped).' },
   's.previewReviewErr':    { zh: '预览完成；AI 审稿失败：{0}', en: 'Preview done; AI review failed: {0}' },
   's.loadedInfoTpl':       { zh: '✅ 已加载：<b>{0}</b><br>documentId：<code>{1}</code> ｜ 状态：{2} ｜ 现有语言：{3}<br><span class="muted">正文已回填到「① 文章内容」可直接编辑；分类与元数据也已回填。</span>', en: '✅ Loaded: <b>{0}</b><br>documentId: <code>{1}</code> | Status: {2} | Existing locales: {3}<br><span class="muted">Body filled into "① Article content"; metadata also filled.</span>' },
@@ -1094,35 +1104,49 @@ $('previewBtn').onclick = async () => {
     if (!$('metaTitle').value && d.metaTitle) $('metaTitle').value = d.metaTitle;
     if (!$('slug').value && d.slug) $('slug').value = d.slug;
     setStatus('ok', t('s.previewDone'));
-
-    // ----- 顺带跑 AI 审稿 -----
-    try {
-      const reviewBody = {
-        fields: {
-          title: $('title').value || d.title || '',
-          description: $('description').value || d.description || '',
-          metaTitle: $('metaTitle').value || d.metaTitle || '',
-          slug: $('slug').value || d.slug || '',
-          content: d.markdown || '',
-        },
-      };
-      const rc = getReviewConfig(); if (rc) reviewBody.reviewConfig = rc;
-      const rr = await fetch(API + '/api/review', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(reviewBody) });
-      const rd = await rr.json();
-      if (!rr.ok) throw new Error(rd.error || ('HTTP ' + rr.status));
-      renderReview(rd);
-      const n = (rd.issues || []).length;
-      if (rd.skipped) setStatus('ok', t('s.previewWithReviewSkip'));
-      else if (n === 0) setStatus('ok', t('s.previewWithReviewOk'));
-      else setStatus('ok', t('s.previewWithReviewN', n));
-    } catch (rev) {
-      // 审稿失败不影响预览
-      $('reviewStage').style.display = 'block';
-      $('reviewMeta').textContent = '';
-      $('reviewBody').innerHTML = `<p class="muted">${t('s.previewReviewErr', rev.message)}</p>`;
-      setStatus('ok', t('s.previewReviewErr', rev.message));
-    }
   } catch (e) { setStatus('err', t('s.previewFailed', e.message)); }
+};
+
+// ===== 文章审阅（独立按钮，新建 / 编辑模式都可用；放在「处理文章」之前）=====
+// 流程：粘贴区 HTML → preview-html 拿到干净 markdown + 解析字段 → /api/review
+// 每处问题单独一个「同意修改」按钮，点一处才改一处（改到粘贴区 / 表单字段）。
+$('reviewBtn').onclick = async () => {
+  if (!$('paste').innerText.trim()) return setStatus('err', t('s.pasteFirst'));
+  $('reviewBtn').disabled = true;
+  setStatus('loading', t('s.reviewLoading'));
+  try {
+    // 1) 先转 markdown（顺便解析出字段）
+    const pr = await fetch(API + '/api/preview-html', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ html: $('paste').innerHTML }) });
+    const pd = await pr.json();
+    if (!pr.ok) throw new Error(pd.error || ('HTTP ' + pr.status));
+    // 回填空字段，让审稿针对将要上传的真实字段值
+    if (!$('title').value && pd.title) $('title').value = pd.title;
+    if (!$('description').value && pd.description) $('description').value = pd.description;
+    if (!$('metaTitle').value && pd.metaTitle) $('metaTitle').value = pd.metaTitle;
+    if (!$('slug').value && pd.slug) $('slug').value = pd.slug;
+    // 2) 送审
+    const reviewBody = {
+      fields: {
+        title: $('title').value || pd.title || '',
+        description: $('description').value || pd.description || '',
+        metaTitle: $('metaTitle').value || pd.metaTitle || '',
+        slug: $('slug').value || pd.slug || '',
+        content: pd.markdown || '',
+      },
+    };
+    const rc = getReviewConfig(); if (rc) reviewBody.reviewConfig = rc;
+    const rr = await fetch(API + '/api/review', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(reviewBody) });
+    const rd = await rr.json();
+    if (!rr.ok) throw new Error(rd.error || ('HTTP ' + rr.status));
+    renderReview(rd);
+    const n = (rd.issues || []).length;
+    if (rd.skipped) setStatus('ok', t('review.noConfig'));
+    else if (n === 0) setStatus('ok', t('s.previewWithReviewOk'));
+    else setStatus('ok', t('s.previewWithReviewN', n));
+  } catch (e) {
+    $('reviewBody').innerHTML = `<p class="muted">${t('review.failed', e.message)}</p>`;
+    setStatus('err', t('review.failed', e.message));
+  } finally { $('reviewBtn').disabled = false; }
 };
 
 // ===== 第 1 步：处理文章（搬图、传封面、解析 frontmatter） =====
@@ -1253,71 +1277,78 @@ $('rmSave').onclick = () => {
 };
 $('reviewModal').onclick = (e) => { if (e.target === $('reviewModal')) $('reviewModal').style.display = 'none'; };
 
-// ===== 渲染审稿结果 =====
+// ===== 渲染审稿结果（每处问题单独一个「同意修改」按钮）=====
 let reviewIssues = [];
 function renderReview(d) {
+  const body = $('reviewBody');
   if (d.skipped) {
-    $('reviewStage').style.display = 'block';
     $('reviewMeta').textContent = '';
-    $('reviewBody').innerHTML = `<p class="muted">${t('review.noConfig')}</p>`;
+    body.innerHTML = `<p class="muted">${t('review.noConfig')}</p>`;
     reviewIssues = [];
     return;
   }
   reviewIssues = d.issues || [];
-  $('reviewStage').style.display = 'block';
   $('reviewMeta').textContent = d.model ? `（${d.model}, ${reviewIssues.length} ${curLang==='en'?'issue(s)':'个问题'}）` : '';
   if (!reviewIssues.length) {
-    $('reviewBody').innerHTML = `<p style="color:var(--success);font-weight:600">${t('review.noIssues')}</p>`;
+    body.innerHTML = `<p style="color:var(--success);font-weight:600">${t('review.noIssues')}</p>`;
     return;
   }
-  const rows = reviewIssues.map((it, i) => {
+  body.innerHTML = reviewIssues.map((it, i) => {
     const loc = it.location || '?';
     const fixable = it.original && it.fixed !== undefined && it.fixed !== null;
+    // fixed 为空串＝整行删除，单独提示，别显示成空 code
+    const fixedShown = it.fixed === ''
+      ? `<span style="color:var(--warn);font-weight:600">${t('review.deleteLine')}</span>`
+      : `<code style="background:#e6f7ed;color:#0a7d34">${escapeAttr(it.fixed).slice(0,200)}</code>`;
     return `
-      <div style="padding:10px 0;border-bottom:1px dashed var(--border)">
-        <div style="font-weight:700;color:var(--ink)">#${i+1} · <span style="color:var(--accent)">${loc}</span> · ${it.description||it.type||''}</div>
-        ${it.original ? `<div style="margin-top:4px;font-size:12px"><span class="muted">${t('review.original')}</span><code>${escapeAttr(it.original).slice(0,200)}</code></div>` : ''}
-        ${fixable ? `<div style="margin-top:4px;font-size:12px"><span class="muted">${t('review.suggestion')}</span><code style="background:#e6f7ed;color:#0a7d34">${escapeAttr(it.fixed).slice(0,200)}</code></div>` : ''}
+      <div class="review-item" data-i="${i}" style="padding:12px 0;border-bottom:1px dashed var(--border);display:flex;gap:12px;align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:var(--ink)">#${i+1} · <span style="color:var(--accent)">${loc}</span> · ${it.description||it.type||''}</div>
+          ${it.original ? `<div style="margin-top:4px;font-size:12px"><span class="muted">${t('review.original')}</span><code>${escapeAttr(it.original).slice(0,200)}</code></div>` : ''}
+          ${fixable ? `<div style="margin-top:4px;font-size:12px"><span class="muted">${t('review.suggestion')}</span>${fixedShown}</div>` : ''}
+        </div>
+        ${fixable ? `<button class="review-apply" data-i="${i}" style="font-size:12px;padding:7px 14px;white-space:nowrap">${t('review.applyOne')}</button>` : ''}
       </div>`;
   }).join('');
-  $('reviewBody').innerHTML = `${rows}<div style="margin-top:14px"><button id="applyFixesBtn">${t('review.applyBtn')}</button></div>`;
-  $('applyFixesBtn').onclick = applyAllFixes;
+  body.querySelectorAll('.review-apply').forEach((btn) => {
+    btn.onclick = () => applyOneFix(+btn.dataset.i, btn);
+  });
 }
 
-function applyAllFixes() {
-  if (!reviewIssues.length) return;
-  let changedFields = 0, changedContent = 0;
-  // 标题/描述/metaTitle/slug：直接替换表单值
-  for (const it of reviewIssues) {
-    if (!it.fixed && it.fixed !== '') continue;
-    const loc = it.location;
-    if (['title','description','metaTitle','slug'].includes(loc)) {
-      const el = $(loc);
-      if (!el) continue;
-      // 若 original 出现在当前值里就 replace，否则直接覆盖
-      if (it.original && el.value.includes(it.original)) {
-        el.value = el.value.split(it.original).join(it.fixed);
-      } else {
-        el.value = it.fixed;
-      }
-      changedFields++;
-    } else if (loc === 'content') {
-      // 正文：在粘贴区 innerHTML 上做文本替换。
-      // original 是 markdown 文本，DOM 里 < > & 是转义形态（&lt; 等），两种都试
-      if (it.original) {
-        const escText = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const candidates = [it.original, escText(it.original)];
-        for (const needle of candidates) {
-          const before = $('paste').innerHTML;
-          const after = before.split(needle).join(it.fixed || '');
-          if (after !== before) { $('paste').innerHTML = after; changedContent++; break; }
-        }
-      }
+// 只修一处：命中就改到对应字段 / 粘贴区，并把这条标为已修改
+function applyOneFix(i, btn) {
+  const it = reviewIssues[i];
+  if (!it || (it.fixed === undefined || it.fixed === null)) return;
+  const loc = it.location;
+  let ok = false;
+  if (['title','description','metaTitle','slug'].includes(loc)) {
+    const el = $(loc);
+    if (el) {
+      if (it.original && el.value.includes(it.original)) el.value = el.value.split(it.original).join(it.fixed);
+      else el.value = it.fixed;
+      ok = true;
+    }
+  } else if (loc === 'content' && it.original) {
+    // 正文改到粘贴区 innerHTML。original 是 markdown，DOM 里 < > & 是实体形态，两种都试
+    const escText = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    for (const needle of [it.original, escText(it.original)]) {
+      const before = $('paste').innerHTML;
+      const after = before.split(needle).join(it.fixed || '');
+      if (after !== before) { $('paste').innerHTML = after; ok = true; break; }
     }
   }
-  setStatus('ok', t('review.appliedMsg', changedFields, changedContent));
-  $('reviewStage').style.display = 'none';
-  reviewIssues = [];
+  const row = btn.closest('.review-item');
+  if (ok) {
+    btn.textContent = t('review.applied');
+    btn.disabled = true;
+    btn.classList.add('success');
+    if (row) row.style.opacity = '.5';
+    setStatus('ok', t('review.appliedOne'));
+  } else {
+    // DOM 里没命中（可能内容已被改过 / 在渲染后的 HTML 里找不到原始 markdown 片段）
+    btn.textContent = t('review.notFound');
+    setStatus('err', t('review.notFoundMsg'));
+  }
 }
 
 // ===== 第 2 步：一键翻译 =====
