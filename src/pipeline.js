@@ -4,6 +4,7 @@ import { blocksToMarkdown } from './convert.js';
 import { htmlToMarkdown, normalizeYoutubeTags } from './html.js';
 import { uploadFile, createBlog, createLocalization, publishLocale } from './strapi.js';
 import { translateFields, adminLogin, withAdminAuthRetry } from './strapi-translate.js';
+import { translateFieldsLLM } from './llm-translate.js';
 import { describeImages, isVisionEnabled } from './vision.js';
 
 // 按 URL 把 markdown 里每张图的 alt 替换成 alts[url]
@@ -610,6 +611,32 @@ export async function translateOnly({ enFields, locales = [], imageAlts = {} } =
   onProgress('翻译完成');
   return {
     enFields: enWithAlts, // alt 已写入；前端用这个更新 prepared.enFields
+    translations,
+    translatedLocales: Object.keys(translations),
+    failedTranslations: failed,
+  };
+}
+
+// 阶段 2（自定义模型版）：用 OpenAI 兼容模型（AtlasCloud）翻译，逻辑同 translateOnly，
+// 只是把翻译器换成 translateFieldsLLM，并透传 translateConfig。
+export async function translateOnlyLLM({ enFields, locales = [], imageAlts = {}, translateConfig = null } = {}, onProgress = noop) {
+  if (!enFields) throw new Error('缺少 enFields；请先点「① 处理文章」');
+  const enWithAlts = { ...enFields, content: applyImageAlts(normalizeYoutubeTags(enFields.content), imageAlts) };
+  const targets = (locales || []).filter((l) => l && l !== 'en' && URL_LOCALE_PREFIX[l] !== undefined);
+  onProgress(`并行翻译 ${targets.length} 种语言（自定义模型）…`);
+  const results = await Promise.allSettled(
+    targets.map((loc) => translateFieldsLLM(enWithAlts, loc, translateConfig, () => {}))
+  );
+  const translations = {};
+  const failed = [];
+  for (let i = 0; i < targets.length; i++) {
+    const r = results[i];
+    if (r.status === 'fulfilled') translations[targets[i]] = r.value;
+    else failed.push({ locale: targets[i], error: r.reason?.message || String(r.reason) });
+  }
+  onProgress('翻译完成');
+  return {
+    enFields: enWithAlts,
     translations,
     translatedLocales: Object.keys(translations),
     failedTranslations: failed,

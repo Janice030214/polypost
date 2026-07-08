@@ -17,7 +17,7 @@ const {
   previewDoc, importDoc, previewHtml, importHtml,
   prepareAndTranslate, syncDrafts, publishAll,
   loadBlog, updateDrafts,
-  prepare, translateOnly,
+  prepare, translateOnly, translateOnlyLLM,
   CATEGORIES, SUPPORTED_LOCALES,
 } = await import('./src/pipeline.js');
 const { reviewArticle, isReviewEnabled } = await import('./src/review.js');
@@ -101,9 +101,15 @@ app.post('/api/prepare', async (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// 四段式：2) 只翻译（基于已 prepare 好的 enFields）
+// 四段式：2) 只翻译（基于已 prepare 好的 enFields）—— Strapi 官方插件
 app.post('/api/translate', async (req, res) => {
   try { res.json(await translateOnly(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// 四段式：2) 只翻译 —— 自定义模型（OpenAI 兼容 / AtlasCloud）
+app.post('/api/translate-llm', async (req, res) => {
+  try { res.json(await translateOnlyLLM(req.body)); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 

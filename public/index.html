@@ -388,9 +388,13 @@
     </div>
 
     <div class="stage" id="stage2">
-      <div class="stage-title" data-i18n="step2.title">第 2 步：一键翻译（先调整完图片宽度再点）</div>
-      <p class="muted" data-i18n="step2.desc">并行翻译所有选中的语言。</p>
-      <button id="translateBtn" disabled data-i18n="step2.btn">🌐 一键翻译</button>
+      <div class="stage-title" data-i18n="step2.title">第 2 步：翻译（先调整完图片宽度再点）</div>
+      <p class="muted" data-i18n="step2.desc">并行翻译所有选中的语言。任选一种翻译方式即可。</p>
+      <div class="btns" style="margin-top:6px">
+        <button id="translateBtn" disabled data-i18n="step2.btnStrapi">🏛️ Strapi 官方翻译</button>
+        <button id="translateLlmBtn" class="secondary" disabled data-i18n="step2.btnLlm">🤖 自定义模型翻译</button>
+        <button class="secondary" id="translateSettingsBtn" style="font-size:12px;padding:8px 14px" data-i18n="step2.modelSettings">⚙️ 翻译模型设置</button>
+      </div>
       <div id="translateResult"></div>
     </div>
 
@@ -467,6 +471,33 @@
     </div>
   </div>
 
+  <!-- 翻译模型 modal（自定义模型翻译用）-->
+  <div id="translateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:90%">
+      <h3 style="margin-top:0"><span data-i18n="tmModal.title">⚙️ 翻译模型设置</span> <span class="muted" style="font-weight:400;font-size:12px" data-i18n="tmModal.subtitle">（用于「自定义模型翻译」）</span></h3>
+      <label data-i18n="modal.baseUrlLabel">Base URL（OpenAI 兼容接口）</label>
+      <input id="tmBase" placeholder="https://api.atlascloud.ai/v1" />
+      <label data-i18n="modal.modelLabel">模型</label>
+      <select id="tmPreset" style="margin-bottom:6px">
+        <option value="openai/gpt-5.5" data-i18n="tmModel.opt1">openai/gpt-5.5（推荐，翻译最强）</option>
+        <option value="anthropic/claude-opus-4.8" data-i18n="tmModel.opt2">anthropic/claude-opus-4.8（文笔自然）</option>
+        <option value="google/gemini-3.1-pro-preview" data-i18n="tmModel.opt3">google/gemini-3.1-pro（多语种强）</option>
+        <option value="deepseek-ai/deepseek-v4-pro" data-i18n="tmModel.opt4">deepseek-ai/deepseek-v4-pro（中文佳）</option>
+        <option value="xai/grok-4.3">xai/grok-4.3</option>
+        <option value="qwen/qwen3.7-max">qwen/qwen3.7-max</option>
+        <option value="zai-org/glm-5.2">zai-org/glm-5.2</option>
+        <option value="__custom__" data-i18n="modal.customOpt">自定义…</option>
+      </select>
+      <input id="tmModel" placeholder="自定义时填模型名" data-i18n-attr="placeholder" data-i18n="modal.customModelPh" />
+      <label data-i18n="modal.keyLabel">API Key</label>
+      <input id="tmKey" type="password" placeholder="apikey-..." />
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="secondary" id="tmCancel" data-i18n="modal.cancelBtn">取消</button>
+        <button id="tmSave" data-i18n="modal.saveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+
 
   <div class="card" id="previewCard" style="display:none">
     <h3 data-i18n="previewCard.title">Markdown 预览</h3>
@@ -508,9 +539,11 @@ const I18N = {
   'step1.title':           { zh: '第 1 步：处理文章', en: 'Step 1: Process article' },
   'step1.desc':            { zh: '解析 HTML、把正文图片搬到 Strapi CDN、上传封面、解析 frontmatter。完成后下方「正文图片宽度」会出现每张图的预览和宽度选择。', en: 'Parse HTML, upload body images to Strapi CDN, upload cover, parse frontmatter. After this, "Image widths" below will show each image with width options.' },
   'step1.btn':             { zh: '📦 处理文章', en: '📦 Process' },
-  'step2.title':           { zh: '第 2 步：一键翻译（先调整完图片宽度再点）', en: 'Step 2: Translate (adjust image widths first)' },
-  'step2.desc':            { zh: '并行翻译所有选中的语言。', en: 'Parallel translate selected languages.' },
-  'step2.btn':             { zh: '🌐 一键翻译', en: '🌐 Translate' },
+  'step2.title':           { zh: '第 2 步：翻译（先调整完图片宽度再点）', en: 'Step 2: Translate (adjust image widths first)' },
+  'step2.desc':            { zh: '并行翻译所有选中的语言。任选一种翻译方式即可。', en: 'Parallel translate selected languages. Pick either engine.' },
+  'step2.btnStrapi':       { zh: '🏛️ Strapi 官方翻译', en: '🏛️ Strapi official translate' },
+  'step2.btnLlm':          { zh: '🤖 自定义模型翻译', en: '🤖 Custom-model translate' },
+  'step2.modelSettings':   { zh: '⚙️ 翻译模型设置', en: '⚙️ Translation model' },
   'strip.desc':            { zh: '应用到 en + 所有翻译语种。如果已经同步过会自动覆盖更新 Strapi。', en: 'Applies to en + all translations. Auto-syncs to Strapi if already synced.' },
   'strip.btn':             { zh: '🧹 清除错误格式', en: '🧹 Clean format' },
   'step3.title':           { zh: '第 3 步：一键同步到 Strapi（创建草稿）', en: 'Step 3: Sync to Strapi (create drafts)' },
@@ -594,6 +627,12 @@ const I18N = {
   'rmModel.opt1':          { zh: 'deepseek-ai/deepseek-v4-pro（推荐，长上下文）', en: 'deepseek-ai/deepseek-v4-pro (recommended, long context)' },
   'rmModel.opt2':          { zh: 'deepseek-ai/deepseek-v4-flash（快）', en: 'deepseek-ai/deepseek-v4-flash (fast)' },
   'rmModel.opt4':          { zh: 'qwen/qwen3.6-plus（大）', en: 'qwen/qwen3.6-plus (large)' },
+  'tmModal.title':         { zh: '⚙️ 翻译模型设置', en: '⚙️ Translation model settings' },
+  'tmModal.subtitle':      { zh: '（用于「自定义模型翻译」）', en: '(Used by "Custom-model translate")' },
+  'tmModel.opt1':          { zh: 'openai/gpt-5.5（推荐，翻译最强）', en: 'openai/gpt-5.5 (recommended, best translation)' },
+  'tmModel.opt2':          { zh: 'anthropic/claude-opus-4.8（文笔自然）', en: 'anthropic/claude-opus-4.8 (natural prose)' },
+  'tmModel.opt3':          { zh: 'google/gemini-3.1-pro（多语种强）', en: 'google/gemini-3.1-pro (strong multilingual)' },
+  'tmModel.opt4':          { zh: 'deepseek-ai/deepseek-v4-pro（中文佳）', en: 'deepseek-ai/deepseek-v4-pro (great for Chinese)' },
 
   // 预览卡片
   'previewCard.title':     { zh: 'Markdown 预览', en: 'Markdown preview' },
@@ -613,9 +652,13 @@ const I18N = {
   's.prepFailed':          { zh: '处理失败：{0}', en: 'Process failed: {0}' },
   's.prepDone':            { zh: '第 1 步完成。先到下方「正文图片宽度」调整图片，然后点「一键翻译」。', en: 'Step 1 done. Adjust image widths below, then click "Translate".' },
   's.tFirstPrep':          { zh: '请先完成第 1 步「处理文章」', en: 'Please complete Step 1 "Process article" first' },
-  's.tLoading':            { zh: '并行翻译 {0} 种语言…', en: 'Translating {0} languages in parallel…' },
+  's.tLoading':            { zh: '并行翻译 {0} 种语言（Strapi 官方）…', en: 'Translating {0} languages (Strapi official)…' },
+  's.tLoadingLlm':         { zh: '并行翻译 {0} 种语言（{1}）…', en: 'Translating {0} languages ({1})…' },
   's.tFailed':             { zh: '翻译失败：{0}', en: 'Translation failed: {0}' },
   's.tDone':               { zh: '第 2 步完成。现在可以点「一键同步到 Strapi」。', en: 'Step 2 done. You can now click "Sync to Strapi".' },
+  's.tmInvalid':           { zh: '翻译模型设置：Base URL、模型、API Key 都必须填', en: 'Translation model: Base URL, Model and API Key are all required' },
+  's.tmSaved':             { zh: '✅ 翻译模型已设置：{0}', en: '✅ Translation model saved: {0}' },
+  's.tLlmNoConfig':        { zh: '请先点「⚙️ 翻译模型设置」填好 API Key（自定义模型翻译需要）。', en: 'Click "⚙️ Translation model" first to set the API Key (required for custom-model translate).' },
   's.syncFirstTranslate':  { zh: '请先完成「一键翻译」', en: 'Please complete "Translate" first' },
   's.syncEditFirstLoad':   { zh: '编辑模式：请先「加载」一篇现有文章', en: 'Edit mode: please "Load" an existing article first' },
   's.syncCreate':          { zh: '创建草稿', en: 'creating drafts' },
@@ -1015,6 +1058,7 @@ $('loadBtn').onclick = async () => {
     };
     setStage(1, 'done');
     $('translateBtn').disabled = false;
+    $('translateLlmBtn').disabled = false;
     $('stripBtn').disabled = false;
     $('syncBtn').disabled = false; // 编辑模式：可以直接同步而不必重译
 
@@ -1169,6 +1213,7 @@ $('prepareBtn').onclick = async () => {
     $('prepareResult').innerHTML = `<div class="urls">${t('s.prepResultDone')}<br>${t('s.prepImageCount', d.imageCount)}${warn}<br><span class="muted">${t('s.prepResultTitle')}: ${d.enFields.title}</span><br><b>${t('s.prepHintRow')}</b></div>`;
     setStage(1, 'done');
     $('translateBtn').disabled = false;
+    $('translateLlmBtn').disabled = false;
     $('stripBtn').disabled = false;
     setStatus('ok', t('s.prepDone'));
   } catch (e) { setStatus('err', t('s.prepFailed', e.message)); }
@@ -1407,14 +1452,28 @@ $('stripBtn').onclick = async () => {
   }
 };
 
-$('translateBtn').onclick = async () => {
+// 两种翻译引擎共用一套流程：engine='strapi' 走官方插件；engine='llm' 走自定义模型
+async function runTranslate(engine) {
   if (!prepared) return setStatus('err', t('s.tFirstPrep'));
-  $('translateBtn').disabled = true;
-  setStage(2, 'active');
   const locales = selectedLocales();
-  setStatus('loading', t('s.tLoading', locales.length));
+  let url, body, loadingMsg;
+  if (engine === 'llm') {
+    const cfg = getTranslateConfig();
+    if (!cfg) return setStatus('err', t('s.tLlmNoConfig'));
+    url = '/api/translate-llm';
+    body = { enFields: prepared.enFields, locales, imageAlts, translateConfig: cfg };
+    loadingMsg = t('s.tLoadingLlm', locales.length, cfg.model);
+  } else {
+    url = '/api/translate';
+    body = { enFields: prepared.enFields, locales, imageAlts };
+    loadingMsg = t('s.tLoading', locales.length);
+  }
+  $('translateBtn').disabled = true;
+  $('translateLlmBtn').disabled = true;
+  setStage(2, 'active');
+  setStatus('loading', loadingMsg);
   try {
-    const r = await fetch(API + '/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enFields: prepared.enFields, locales, imageAlts }) });
+    const r = await fetch(API + url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const txt = await r.text();
     let d; try { d = JSON.parse(txt); } catch { throw new Error('HTTP ' + r.status + ': ' + txt.slice(0,200)); }
     if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
@@ -1424,13 +1483,57 @@ $('translateBtn').onclick = async () => {
     prepared.failedTranslations = d.failedTranslations || [];
     const okList = ['en', ...prepared.translatedLocales].map(l => `<span class="badge ok">${l}</span>`).join('');
     const errList = prepared.failedTranslations.map(f => `<span class="badge err">${f.locale}（${f.error}）</span>`).join('');
-    $('translateResult').innerHTML = `<div class="urls">${t('s.tResultDone')}<br>${t('s.tResultReady')}${okList}${errList?'<br>'+t('s.tResultFailed')+errList:''}</div>`;
+    const engineTag = engine === 'llm' ? ` <span class="muted">(${getTranslateConfig()?.model || 'LLM'})</span>` : '';
+    $('translateResult').innerHTML = `<div class="urls">${t('s.tResultDone')}${engineTag}<br>${t('s.tResultReady')}${okList}${errList?'<br>'+t('s.tResultFailed')+errList:''}</div>`;
     setStage(2, 'done');
     $('syncBtn').disabled = false;
     setStatus('ok', t('s.tDone'));
   } catch (e) { setStatus('err', t('s.tFailed', e.message)); }
-  finally { $('translateBtn').disabled = false; }
+  finally { $('translateBtn').disabled = false; $('translateLlmBtn').disabled = false; }
+}
+$('translateBtn').onclick = () => runTranslate('strapi');
+$('translateLlmBtn').onclick = () => runTranslate('llm');
+
+// ===== 翻译模型设置（localStorage 持久化，同 vision/review 模式）=====
+const TM_KEY = 'translateConfig.v1';
+const TM_DEFAULTS = { base: 'https://api.atlascloud.ai/v1', model: 'openai/gpt-5.5', key: '' };
+function getTranslateConfig() {
+  try {
+    const c = JSON.parse(localStorage.getItem(TM_KEY) || 'null');
+    if (!c || !c.base || !c.key || !c.model) return null; // 自定义翻译必须三者齐全
+    if (DEAD_MODELS.includes(c.model)) return null;
+    return { base: c.base, key: c.key, model: c.model };
+  } catch { return null; }
+}
+$('translateSettingsBtn').onclick = () => {
+  const cur = getTranslateConfig() || TM_DEFAULTS;
+  $('tmBase').value = cur.base || TM_DEFAULTS.base;
+  $('tmKey').value = cur.key || '';
+  const preset = $('tmPreset');
+  const opts = [...preset.options].map(o => o.value);
+  if (cur.model && opts.includes(cur.model)) {
+    preset.value = cur.model; $('tmModel').value = ''; $('tmModel').style.display = 'none';
+  } else {
+    preset.value = '__custom__'; $('tmModel').value = cur.model || TM_DEFAULTS.model; $('tmModel').style.display = '';
+  }
+  $('translateModal').style.display = 'flex';
 };
+$('tmPreset').onchange = () => {
+  const isCustom = $('tmPreset').value === '__custom__';
+  $('tmModel').style.display = isCustom ? '' : 'none';
+  if (!isCustom) $('tmModel').value = '';
+};
+$('tmCancel').onclick = () => { $('translateModal').style.display = 'none'; };
+$('tmSave').onclick = () => {
+  const presetVal = $('tmPreset').value;
+  const model = presetVal === '__custom__' ? $('tmModel').value.trim() : presetVal;
+  const cfg = { base: $('tmBase').value.trim(), model, key: $('tmKey').value.trim() };
+  if (!cfg.base || !cfg.model || !cfg.key) return setStatus('err', t('s.tmInvalid'));
+  localStorage.setItem(TM_KEY, JSON.stringify(cfg));
+  $('translateModal').style.display = 'none';
+  setStatus('ok', t('s.tmSaved', cfg.model));
+};
+$('translateModal').onclick = (e) => { if (e.target === $('translateModal')) $('translateModal').style.display = 'none'; };
 
 // ===== 第 2 步：同步到 Strapi（草稿）=====
 $('syncBtn').onclick = async () => {
