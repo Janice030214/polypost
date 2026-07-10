@@ -654,6 +654,10 @@ const I18N = {
   's.tFirstPrep':          { zh: '请先完成第 1 步「处理文章」', en: 'Please complete Step 1 "Process article" first' },
   's.tLoading':            { zh: '并行翻译 {0} 种语言（Strapi 官方）…', en: 'Translating {0} languages (Strapi official)…' },
   's.tLoadingLlm':         { zh: '并行翻译 {0} 种语言（{1}）…', en: 'Translating {0} languages ({1})…' },
+  's.tContinue':           { zh: '续翻剩余 {0} 种（已完成 {1} 种保持不变，{2}）…', en: 'Translating remaining {0} ({1} already done kept, {2})…' },
+  's.tOverwrite':          { zh: '全部 {0} 种均已翻译，重新翻译覆盖（{1}）…', en: 'All {0} already translated; re-translating to overwrite ({1})…' },
+  's.tNoLocale':           { zh: '请先在上面「④ 选择要发布的语言」勾选至少一种非 en 语言。', en: 'Select at least one non-en language in "④ Languages to publish" above.' },
+  's.tPartial':            { zh: '⚠️ 还有 {0} 种失败。再点一次「{1}」会只重试这几种（已成功的保留）。', en: '⚠️ {0} still failed. Click "{1}" again to retry only those (successful ones kept).' },
   's.tFailed':             { zh: '翻译失败：{0}', en: 'Translation failed: {0}' },
   's.tDone':               { zh: '第 2 步完成。现在可以点「一键同步到 Strapi」。', en: 'Step 2 done. You can now click "Sync to Strapi".' },
   's.tmInvalid':           { zh: '翻译模型设置：Base URL、模型、API Key 都必须填', en: 'Translation model: Base URL, Model and API Key are all required' },
@@ -1453,21 +1457,33 @@ $('stripBtn').onclick = async () => {
 };
 
 // 两种翻译引擎共用一套流程：engine='strapi' 走官方插件；engine='llm' 走自定义模型
+// 增量续翻：只翻还没成功的语种，已成功的保留不动；只有当所选语种全部已翻译时，
+// 再点才是「覆盖重来」（重新翻译全部所选）。
 async function runTranslate(engine) {
   if (!prepared) return setStatus('err', t('s.tFirstPrep'));
-  const locales = selectedLocales();
-  let url, body, loadingMsg;
+  const selected = selectedLocales();
+  if (!selected.length) return setStatus('err', t('s.tNoLocale'));
+
+  const prev = prepared.translations || {};
+  const alreadyDone = selected.filter((l) => prev[l]);
+  const overwrite = alreadyDone.length === selected.length; // 所选全部已翻译 → 覆盖重来
+  const todo = overwrite ? selected : selected.filter((l) => !prev[l]);
+
+  let cfg = null;
   if (engine === 'llm') {
-    const cfg = getTranslateConfig();
+    cfg = getTranslateConfig();
     if (!cfg) return setStatus('err', t('s.tLlmNoConfig'));
-    url = '/api/translate-llm';
-    body = { enFields: prepared.enFields, locales, imageAlts, translateConfig: cfg };
-    loadingMsg = t('s.tLoadingLlm', locales.length, cfg.model);
-  } else {
-    url = '/api/translate';
-    body = { enFields: prepared.enFields, locales, imageAlts };
-    loadingMsg = t('s.tLoading', locales.length);
   }
+  const url = engine === 'llm' ? '/api/translate-llm' : '/api/translate';
+  const body = { enFields: prepared.enFields, locales: todo, imageAlts };
+  if (engine === 'llm') body.translateConfig = cfg;
+
+  const engLabel = engine === 'llm' ? cfg.model : 'Strapi';
+  let loadingMsg;
+  if (overwrite) loadingMsg = t('s.tOverwrite', selected.length, engLabel);
+  else if (alreadyDone.length) loadingMsg = t('s.tContinue', todo.length, alreadyDone.length, engLabel);
+  else loadingMsg = engine === 'llm' ? t('s.tLoadingLlm', todo.length, cfg.model) : t('s.tLoading', todo.length);
+
   $('translateBtn').disabled = true;
   $('translateLlmBtn').disabled = true;
   setStage(2, 'active');
@@ -1478,16 +1494,21 @@ async function runTranslate(engine) {
     let d; try { d = JSON.parse(txt); } catch { throw new Error('HTTP ' + r.status + ': ' + txt.slice(0,200)); }
     if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
     if (d.enFields) prepared.enFields = d.enFields; // alt 已写入 content
-    prepared.translations = d.translations || {};
-    prepared.translatedLocales = d.translatedLocales || [];
-    prepared.failedTranslations = d.failedTranslations || [];
+    // 合并：保留本轮没动的旧译文，用本轮新结果覆盖 todo 里的语种
+    prepared.translations = { ...prev, ...(d.translations || {}) };
+    prepared.translatedLocales = Object.keys(prepared.translations);
+    prepared.failedTranslations = d.failedTranslations || []; // 本轮仍失败的（下次点会自动重试）
     const okList = ['en', ...prepared.translatedLocales].map(l => `<span class="badge ok">${l}</span>`).join('');
     const errList = prepared.failedTranslations.map(f => `<span class="badge err">${f.locale}（${f.error}）</span>`).join('');
-    const engineTag = engine === 'llm' ? ` <span class="muted">(${getTranslateConfig()?.model || 'LLM'})</span>` : '';
+    const engineTag = engine === 'llm' ? ` <span class="muted">(${cfg.model})</span>` : '';
     $('translateResult').innerHTML = `<div class="urls">${t('s.tResultDone')}${engineTag}<br>${t('s.tResultReady')}${okList}${errList?'<br>'+t('s.tResultFailed')+errList:''}</div>`;
     setStage(2, 'done');
     $('syncBtn').disabled = false;
-    setStatus('ok', t('s.tDone'));
+    if (prepared.failedTranslations.length) {
+      setStatus('ok', t('s.tPartial', prepared.failedTranslations.length, engine === 'llm' ? t('step2.btnLlm') : t('step2.btnStrapi')));
+    } else {
+      setStatus('ok', t('s.tDone'));
+    }
   } catch (e) { setStatus('err', t('s.tFailed', e.message)); }
   finally { $('translateBtn').disabled = false; $('translateLlmBtn').disabled = false; }
 }
