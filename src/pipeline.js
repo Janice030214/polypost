@@ -30,8 +30,11 @@ const CAT_BY_DOCID = Object.fromEntries(CATEGORIES.map((c) => [c.docId, c]));
 const URL_LOCALE_PREFIX = {
   en: '', zh: 'zh', 'zh-Hant': 'zh-TW', ja: 'ja', ko: 'ko',
   de: 'de', fr: 'fr', es: 'es', ru: 'ru', ar: 'ar', pt: 'pt',
+  // 2026-07-20 后台新增的语种
+  hi: 'hi', it: 'it', nl: 'nl', pl: 'pl', tr: 'tr',
+  vi: 'vi', th: 'th', id: 'id', sv: 'sv',
 };
-export const SUPPORTED_LOCALES = Object.keys(URL_LOCALE_PREFIX); // 11 个
+export const SUPPORTED_LOCALES = Object.keys(URL_LOCALE_PREFIX); // 20 个
 
 function buildPublicUrl({ locale, categoryDocId, slug }) {
   const prefix = URL_LOCALE_PREFIX[locale] ?? locale;

@@ -8,12 +8,15 @@ const LOCALE_NAME = {
   en: 'English', zh: 'Simplified Chinese (简体中文)', 'zh-Hant': 'Traditional Chinese (繁體中文)',
   ja: 'Japanese (日本語)', ko: 'Korean (한국어)', de: 'German (Deutsch)', fr: 'French (Français)',
   es: 'Spanish (Español)', ru: 'Russian (Русский)', ar: 'Arabic (العربية)', pt: 'Portuguese (Português)',
+  hi: 'Hindi (हिन्दी)', it: 'Italian (Italiano)', nl: 'Dutch (Nederlands)', pl: 'Polish (Polski)',
+  tr: 'Turkish (Türkçe)', vi: 'Vietnamese (Tiếng Việt)', th: 'Thai (ไทย)',
+  id: 'Indonesian (Bahasa Indonesia)', sv: 'Swedish (Svenska)',
 };
 
 const envCfg = () => ({
   base: (process.env.TRANSLATE_API_BASE || process.env.VISION_API_BASE || '').replace(/\/$/, ''),
   key: process.env.TRANSLATE_API_KEY || process.env.VISION_API_KEY,
-  model: process.env.TRANSLATE_MODEL || 'openai/gpt-5.5',
+  model: process.env.TRANSLATE_MODEL || 'qwen/qwen3.7-plus', // Qwen 翻译特长且便宜（$0.4/$1.6 per M）
 });
 function resolveCfg(override) {
   if (override && override.base && override.key && override.model) {
