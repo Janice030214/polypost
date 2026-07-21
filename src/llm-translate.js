@@ -10,8 +10,15 @@ const LOCALE_NAME = {
   es: 'Spanish (Español)', ru: 'Russian (Русский)', ar: 'Arabic (العربية)', pt: 'Portuguese (Português)',
   hi: 'Hindi (हिन्दी)', it: 'Italian (Italiano)', nl: 'Dutch (Nederlands)', pl: 'Polish (Polski)',
   tr: 'Turkish (Türkçe)', vi: 'Vietnamese (Tiếng Việt)', th: 'Thai (ไทย)',
-  id: 'Indonesian (Bahasa Indonesia)', sv: 'Swedish (Svenska)',
+  id: 'Indonesian (Bahasa Indonesia)', sv: 'Swedish (Svenska)', 'bn-IN': 'Bengali (India) (বাংলা)',
 };
+
+// 未知 locale 的语言名兜底：用 Intl 从 code 推出英文语言名（Strapi 里随时可能加新语种）
+function localeName(code) {
+  if (LOCALE_NAME[code]) return LOCALE_NAME[code];
+  try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code; }
+  catch { return code; }
+}
 
 const envCfg = () => ({
   base: (process.env.TRANSLATE_API_BASE || process.env.VISION_API_BASE || '').replace(/\/$/, ''),
@@ -63,7 +70,7 @@ Hard rules — follow exactly:
 export async function translateFieldsLLM(fields, targetLocale, override, onProgress = () => {}) {
   const c = resolveCfg(override);
   if (!c.base || !c.key || !c.model) throw new Error('自定义翻译模型未配置（base / key / model）');
-  const langName = LOCALE_NAME[targetLocale] || targetLocale;
+  const langName = localeName(targetLocale);
 
   const prot = protectYoutube(fields.content || '');
   const source = { title: fields.title || '', description: fields.description || '', content: prot.replaced };

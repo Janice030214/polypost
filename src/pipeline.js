@@ -2,7 +2,7 @@
 import { resolveDocumentId, fetchAllBlocks, downloadMedia } from './lark.js';
 import { blocksToMarkdown } from './convert.js';
 import { htmlToMarkdown, normalizeYoutubeTags } from './html.js';
-import { uploadFile, createBlog, createLocalization, publishLocale } from './strapi.js';
+import { uploadFile, createBlog, createLocalization, publishLocale, listLocales } from './strapi.js';
 import { translateFields, adminLogin, withAdminAuthRetry } from './strapi-translate.js';
 import { translateFieldsLLM } from './llm-translate.js';
 import { describeImages, isVisionEnabled } from './vision.js';
@@ -34,7 +34,30 @@ const URL_LOCALE_PREFIX = {
   hi: 'hi', it: 'it', nl: 'nl', pl: 'pl', tr: 'tr',
   vi: 'vi', th: 'th', id: 'id', sv: 'sv',
 };
-export const SUPPORTED_LOCALES = Object.keys(URL_LOCALE_PREFIX); // 20 个
+export const SUPPORTED_LOCALES = Object.keys(URL_LOCALE_PREFIX); // 静态兜底列表
+
+// 语言的本地化展示名（已知的用好看的原文名；未知的回退 Strapi 返回名 / Intl）
+const LOCALE_LABEL = {
+  en: 'English', zh: '简体中文', 'zh-Hant': '繁體中文', ja: '日本語', ko: '한국어',
+  de: 'Deutsch', fr: 'Français', es: 'Español', pt: 'Português', ru: 'Русский', ar: 'العربية',
+  hi: 'हिन्दी', it: 'Italiano', nl: 'Nederlands', pl: 'Polski', tr: 'Türkçe',
+  vi: 'Tiếng Việt', th: 'ไทย', id: 'Bahasa Indonesia', sv: 'Svenska', 'bn-IN': 'বাংলা (ভারত)',
+};
+
+// 从 Strapi 动态拉取「实际启用」的 locale，作为发布/翻译的权威来源。
+// 这样上传器永远跟随后台设置（避免代码里写死的语种和后台漂移，如 hi vs bn-IN）。
+// 失败时回退到静态列表，保证页面仍可用。
+export async function listEnabledLocales() {
+  try {
+    const list = await withAdminAuthRetry((jwt) => listLocales(jwt));
+    if (!list.length) throw new Error('empty');
+    const mapped = list.map((l) => ({ code: l.code, name: LOCALE_LABEL[l.code] || l.name || l.code }));
+    mapped.sort((a, b) => (a.code === 'en' ? -1 : b.code === 'en' ? 1 : 0)); // en 置顶
+    return mapped;
+  } catch {
+    return SUPPORTED_LOCALES.map((c) => ({ code: c, name: LOCALE_LABEL[c] || c }));
+  }
+}
 
 function buildPublicUrl({ locale, categoryDocId, slug }) {
   const prefix = URL_LOCALE_PREFIX[locale] ?? locale;
@@ -599,7 +622,7 @@ export async function translateOnly({ enFields, locales = [], imageAlts = {} } =
   // 把用户编辑过的 alt 写回 en content（再送翻译，所有语种 alt 都会被翻译）
   // youtube 标签先规范化，确保翻译时的占位符保护能匹配到
   const enWithAlts = { ...enFields, content: applyImageAlts(normalizeYoutubeTags(enFields.content), imageAlts) };
-  const targets = (locales || []).filter((l) => l && l !== 'en' && URL_LOCALE_PREFIX[l] !== undefined);
+  const targets = (locales || []).filter((l) => l && l !== 'en');
   onProgress(`并行翻译 ${targets.length} 种语言…`);
   const results = await Promise.allSettled(
     targets.map((loc) => translateFields(enWithAlts, loc, () => {}))
@@ -625,7 +648,7 @@ export async function translateOnly({ enFields, locales = [], imageAlts = {} } =
 export async function translateOnlyLLM({ enFields, locales = [], imageAlts = {}, translateConfig = null } = {}, onProgress = noop) {
   if (!enFields) throw new Error('缺少 enFields；请先点「① 处理文章」');
   const enWithAlts = { ...enFields, content: applyImageAlts(normalizeYoutubeTags(enFields.content), imageAlts) };
-  const targets = (locales || []).filter((l) => l && l !== 'en' && URL_LOCALE_PREFIX[l] !== undefined);
+  const targets = (locales || []).filter((l) => l && l !== 'en');
   onProgress(`并行翻译 ${targets.length} 种语言（自定义模型）…`);
   const results = await Promise.allSettled(
     targets.map((loc) => translateFieldsLLM(enWithAlts, loc, translateConfig, () => {}))
@@ -704,7 +727,7 @@ export async function prepareAndTranslate({
   if (eff.coverYoutubeId) enFields.coverYoutubeId = eff.coverYoutubeId;
 
   // 并行翻译
-  const targets = (locales || []).filter((l) => l && l !== 'en' && URL_LOCALE_PREFIX[l] !== undefined);
+  const targets = (locales || []).filter((l) => l && l !== 'en');
   onProgress(`翻译 ${targets.length} 种语言…`);
   const results = await Promise.allSettled(
     targets.map((loc) => translateFields(enFields, loc, () => {}))
@@ -791,26 +814,20 @@ export async function updateDrafts({ documentId, enFields, translations = {}, im
   return { documentId, synced };
 }
 
-// 阶段 3：发布所有 locale，返回官网链接
+// 阶段 3：发布所有 locale，返回官网链接。
+// 用内容 API token 并行发布（不再依赖 admin 角色的 locale 发布权限）。
 export async function publishAll({ documentId, locales, categoryDocId, slug } = {}, onProgress = noop) {
   if (!documentId) throw new Error('缺少 documentId');
-  onProgress('admin 登录…');
+  onProgress(`发布 ${(locales || []).length} 个语种…`);
 
-  const results = [];
-  for (const loc of locales) {
+  const results = await Promise.all((locales || []).map(async (loc) => {
     try {
-      onProgress(`发布 ${loc}…`);
-      // 每个 locale 都用 withAdminAuthRetry 包，401 时会自动重登并重试一次
-      await withAdminAuthRetry((jwt) => publishLocale(documentId, loc, jwt));
-      results.push({
-        locale: loc,
-        ok: true,
-        url: buildPublicUrl({ locale: loc, categoryDocId, slug }),
-      });
+      await publishLocale(documentId, loc);
+      return { locale: loc, ok: true, url: buildPublicUrl({ locale: loc, categoryDocId, slug }) };
     } catch (e) {
-      results.push({ locale: loc, ok: false, error: e.message });
+      return { locale: loc, ok: false, error: e.message };
     }
-  }
+  }));
   onProgress('发布完成');
   return { documentId, results };
 }

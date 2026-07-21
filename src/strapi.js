@@ -70,21 +70,36 @@ export async function createLocalization(documentId, fields, { publish = false }
   return json.data;
 }
 
-// 发布某个 locale 的草稿（admin 鉴权，复用后台 Publish 动作）
-export async function publishLocale(documentId, locale, adminJwt) {
-  const url = `${URLBASE()}/content-manager/collection-types/api::blog.blog/${documentId}/actions/publish?locale=${encodeURIComponent(locale)}`;
+// 发布某个 locale 的草稿。
+// 主路径：内容 API token（Full access）PUT ?status=published —— 直接把该 locale 的草稿
+//   提升为已发布。相比后台 content-manager 的 Publish 动作，这个不受 admin 角色的
+//   「按 locale 授权」限制（后台账号是 Editor，对新加的语种没有发布权限 → 403）。
+//   空 {data:{}} 是部分更新，只翻转 publishedAt，不动已有字段。
+export async function publishLocale(documentId, locale, _adminJwt) {
+  const url = `${URLBASE()}/api/blogs/${documentId}?locale=${encodeURIComponent(locale)}&status=published`;
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${adminJwt}`, 'Content-Type': 'application/json' },
-    body: '{}',
+    method: 'PUT',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ data: {} }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(`发布 ${locale} 失败 HTTP ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
-    err.status = res.status; // 让上层能识别 401 触发重登重试
+    err.status = res.status;
     throw err;
   }
   return json.data;
+}
+
+// 拉取 Strapi 实际启用的 i18n locale 列表（admin 鉴权）。返回 [{code, name}]。
+export async function listLocales(adminJwt) {
+  const res = await fetch(`${URLBASE()}/i18n/locales`, {
+    headers: { Authorization: `Bearer ${adminJwt}` },
+  });
+  if (res.status === 401) { const e = new Error('admin token expired (401) at i18n/locales'); e.status = 401; throw e; }
+  const json = await res.json().catch(() => ([]));
+  const arr = Array.isArray(json) ? json : (json.data || []);
+  return arr.map((l) => ({ code: l.code, name: l.name || l.code, isDefault: !!l.isDefault }));
 }
 
 export async function listCategories() {

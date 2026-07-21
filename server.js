@@ -18,7 +18,7 @@ const {
   prepareAndTranslate, syncDrafts, publishAll,
   loadBlog, updateDrafts,
   prepare, translateOnly, translateOnlyLLM,
-  CATEGORIES, SUPPORTED_LOCALES,
+  CATEGORIES, SUPPORTED_LOCALES, listEnabledLocales,
 } = await import('./src/pipeline.js');
 const { reviewArticle, isReviewEnabled } = await import('./src/review.js');
 
@@ -41,8 +41,12 @@ app.use((req, res, next) => {
 });
 app.use(express.static(join(__dirname, 'public')));
 
-app.get('/api/meta', (_req, res) => {
-  res.json({ categories: CATEGORIES, locales: SUPPORTED_LOCALES });
+app.get('/api/meta', async (_req, res) => {
+  // locales 从 Strapi 动态拉取（跟随后台实际启用的语种）；失败自动回退静态列表
+  let locales;
+  try { locales = await listEnabledLocales(); }
+  catch { locales = SUPPORTED_LOCALES.map((c) => ({ code: c, name: c })); }
+  res.json({ categories: CATEGORIES, locales });
 });
 
 app.post('/api/preview', async (req, res) => {
