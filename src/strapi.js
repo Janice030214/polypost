@@ -6,6 +6,43 @@ function authHeaders(extra = {}) {
   return { Authorization: `Bearer ${TOKEN()}`, ...extra };
 }
 
+// 带超时 + 重试的 JSON 请求。网络错误（fetch failed / 连接重置 / 超时）和 5xx 都会重试。
+// 网络本身抖动时（Strapi 偶发连不上），单次失败不再直接把整个同步/发布搞崩。
+// 返回 { ok, status, json }；彻底失败（多次网络错误）抛出带中文说明的错误。
+async function jsonFetchRetry(url, { method, body, tries = 3, timeoutMs = 45000 } = {}) {
+  let lastNetErr = null;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body,
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      const text = await res.text();
+      let json; try { json = JSON.parse(text); } catch { json = { raw: text.slice(0, 300) }; }
+      // 5xx 视为可重试；4xx 是业务错误，直接返回让调用方处理
+      if (!res.ok && res.status >= 500 && attempt < tries) {
+        await new Promise((s) => setTimeout(s, 600 * attempt));
+        continue;
+      }
+      return { ok: res.ok, status: res.status, json };
+    } catch (e) {
+      clearTimeout(timer);
+      lastNetErr = e;
+      // 网络类错误（含超时 abort）→ 退避后重试
+      if (attempt < tries) { await new Promise((s) => setTimeout(s, 700 * attempt)); continue; }
+    }
+  }
+  const hint = lastNetErr?.name === 'AbortError' ? '请求超时' : (lastNetErr?.message || 'fetch failed');
+  const err = new Error(`连接 Strapi 失败（网络波动？已重试 ${tries} 次）：${hint}`);
+  err.networkError = true;
+  throw err;
+}
+
 // 上传一个二进制文件到 Strapi media 库，返回 { id, url }。500/网络错误时自动重试一次。
 export async function uploadFile({ buffer, mime, name }) {
   const sizeKB = Math.round(buffer.length / 1024);
@@ -42,30 +79,26 @@ export async function uploadFile({ buffer, mime, name }) {
 // 创建一篇 blog（默认草稿）。fields 直接对应 Strapi blog 字段
 export async function createBlog(fields, { publish = false } = {}) {
   const qs = publish ? '?status=published' : '?status=draft';
-  const res = await fetch(`${URLBASE()}/api/blogs${qs}`, {
+  const { ok, status, json } = await jsonFetchRetry(`${URLBASE()}/api/blogs${qs}`, {
     method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ data: fields }),
   });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(`创建文章失败 HTTP ${res.status}: ${JSON.stringify(json).slice(0, 400)}`);
+  if (!ok) {
+    throw new Error(`创建文章失败 HTTP ${status}: ${JSON.stringify(json).slice(0, 400)}`);
   }
   return json.data;
 }
 
 // 给已存在的文档(documentId)新增/更新一个语言版本（Strapi v5 i18n）
 export async function createLocalization(documentId, fields, { publish = false } = {}) {
-  const status = publish ? 'published' : 'draft';
-  const url = `${URLBASE()}/api/blogs/${documentId}?locale=${encodeURIComponent(fields.locale)}&status=${status}`;
-  const res = await fetch(url, {
+  const s = publish ? 'published' : 'draft';
+  const url = `${URLBASE()}/api/blogs/${documentId}?locale=${encodeURIComponent(fields.locale)}&status=${s}`;
+  const { ok, status, json } = await jsonFetchRetry(url, {
     method: 'PUT',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ data: fields }),
   });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(`创建 ${fields.locale} 版本失败 HTTP ${res.status}: ${JSON.stringify(json).slice(0, 400)}`);
+  if (!ok) {
+    throw new Error(`创建 ${fields.locale} 版本失败 HTTP ${status}: ${JSON.stringify(json).slice(0, 400)}`);
   }
   return json.data;
 }
@@ -77,15 +110,13 @@ export async function createLocalization(documentId, fields, { publish = false }
 //   空 {data:{}} 是部分更新，只翻转 publishedAt，不动已有字段。
 export async function publishLocale(documentId, locale, _adminJwt) {
   const url = `${URLBASE()}/api/blogs/${documentId}?locale=${encodeURIComponent(locale)}&status=published`;
-  const res = await fetch(url, {
+  const { ok, status, json } = await jsonFetchRetry(url, {
     method: 'PUT',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ data: {} }),
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(`发布 ${locale} 失败 HTTP ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
-    err.status = res.status;
+  if (!ok) {
+    const err = new Error(`发布 ${locale} 失败 HTTP ${status}: ${JSON.stringify(json).slice(0, 200)}`);
+    err.status = status;
     throw err;
   }
   return json.data;
