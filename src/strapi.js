@@ -76,8 +76,27 @@ export async function uploadFile({ buffer, mime, name }) {
   return { id: file.id, url: file.url };
 }
 
+// Strapi 里这几个是单行字符串字段（DB VARCHAR，上限 255）；超长会让数据库报错、
+// Strapi 直接回 500「Internal Server Error」（看不出是长度问题）。写入前先拦下来给清晰提示。
+// title/slug/author 实测 255 上限；metaTitle/description/content 是长文本，不限。
+const STRING_LIMIT = 255;
+const LIMITED_FIELDS = ['title', 'slug', 'author'];
+function assertFieldLimits(fields) {
+  const over = LIMITED_FIELDS
+    .filter((k) => typeof fields[k] === 'string' && fields[k].length > STRING_LIMIT)
+    .map((k) => `${k}（${fields[k].length} 字）`);
+  if (over.length) {
+    const loc = fields.locale ? `[${fields.locale}] ` : '';
+    throw new Error(
+      `${loc}字段超长，Strapi 上限 ${STRING_LIMIT} 字：${over.join('、')}。` +
+      `请把对应字段改短——标题过长通常是正文里的长标题/长句被误当成了 title，可在上方「标题」框手动填一个简短标题。`
+    );
+  }
+}
+
 // 创建一篇 blog（默认草稿）。fields 直接对应 Strapi blog 字段
 export async function createBlog(fields, { publish = false } = {}) {
+  assertFieldLimits(fields);
   const qs = publish ? '?status=published' : '?status=draft';
   const { ok, status, json } = await jsonFetchRetry(`${URLBASE()}/api/blogs${qs}`, {
     method: 'POST',
@@ -91,6 +110,7 @@ export async function createBlog(fields, { publish = false } = {}) {
 
 // 给已存在的文档(documentId)新增/更新一个语言版本（Strapi v5 i18n）
 export async function createLocalization(documentId, fields, { publish = false } = {}) {
+  assertFieldLimits(fields);
   const s = publish ? 'published' : 'draft';
   const url = `${URLBASE()}/api/blogs/${documentId}?locale=${encodeURIComponent(fields.locale)}&status=${s}`;
   const { ok, status, json } = await jsonFetchRetry(url, {
